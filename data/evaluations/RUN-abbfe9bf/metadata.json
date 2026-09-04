@@ -1,0 +1,8 @@
+{
+  "git_commit": "bb3e37c3a172757d9fad7f995758631416cdbac6",
+  "dataset_hash": "bc7d721f9524aa07f177dd46b7ebe006681bac77fb24f3ea04ce31b80c046288",
+  "seed": 42,
+  "system": "commercetwin",
+  "split": "held_out",
+  "timestamp": "2026-09-04T23:38:39.126641"
+}

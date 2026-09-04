@@ -59,8 +59,6 @@ class RepairVerifier:
             # --- Baseline run (should fail) ---
             base_runner = cohort_factory(trace_id)
             base_runner.run_to_precheck()
-            if is_payment_repair and base_runner.state_machine.current_state == CommerceState.READY_FOR_PAYMENT:
-                base_runner.process_payment()
             before_state = base_runner.state_machine.current_state
             
             # For non-payment repairs, reaching READY_FOR_PAYMENT is a success.
@@ -75,8 +73,6 @@ class RepairVerifier:
             # --- Patched run (should improve) ---
             patched_runner = patched_cohort_factory(trace_id)
             patched_runner.run_to_precheck()
-            if is_payment_repair and patched_runner.state_machine.current_state == CommerceState.READY_FOR_PAYMENT:
-                patched_runner.process_payment()
             after_state = patched_runner.state_machine.current_state
             
             after_success = (after_state == CommerceState.COMPLETED) or (not is_payment_repair and after_state == CommerceState.READY_FOR_PAYMENT)

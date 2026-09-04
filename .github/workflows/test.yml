@@ -23,19 +23,15 @@ jobs:
       - name: Lint
         run: |
           cd backend
-          python -m ruff check app tests || true
-      - name: Unit tests
+          python -m ruff check app tests
+      - name: Tests
         run: |
           cd backend
-          python -m pytest tests/unit/ || true
-      - name: Integration tests
-        run: |
-          cd backend
-          python -m pytest tests/integration/ || true
+          python -m pytest tests
       - name: Coverage
         run: |
           cd backend
-          python -m pytest --cov=app tests/ || true
+          python -m pytest --cov=app --cov-report=term-missing tests
 
   frontend-build:
     runs-on: ubuntu-latest

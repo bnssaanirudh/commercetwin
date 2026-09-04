@@ -1,0 +1,6 @@
+{
+  "merchant_version": 1,
+  "buyer_cohort_version": "val",
+  "chaos_profile": "catalog_chaos",
+  "seed": 42
+}

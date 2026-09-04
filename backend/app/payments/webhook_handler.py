@@ -57,24 +57,32 @@ class WebhookProcessor:
         finally:
             db.close()
 
-        # Try to process monotonic state transition (in a real system, update payment operation)
+        # Try to process monotonic state transition
         try:
             payment_entity = payload.get("payload", {}).get("payment", {}).get("entity", {})
             payment_id = payment_entity.get("id")
+            order_id = payment_entity.get("order_id")
             
-            if not payment_id:
+            if not order_id:
                 return False
                 
-            current_state = self.payment_states.get(payment_id, "created")
-            
-            current_level = STATE_HIERARCHY.get(current_state, 0)
-            target_level = STATE_HIERARCHY.get(target_state, 0)
-            
-            if target_level > current_level:
-                # Monotonic progression: only advance if the new state is strictly greater
-                self.payment_states[payment_id] = target_state
-                
-            return True
+            db = SessionLocal()
+            try:
+                from app.models import PaymentOperation
+                op = db.query(PaymentOperation).filter(PaymentOperation.razorpay_order_id == order_id).first()
+                if op:
+                    current_state = op.state
+                    current_level = STATE_HIERARCHY.get(current_state, 0)
+                    target_level = STATE_HIERARCHY.get(target_state, 0)
+                    
+                    if target_level > current_level:
+                        op.state = target_state
+                        if payment_id:
+                            op.razorpay_payment_id = payment_id
+                        db.commit()
+                return True
+            finally:
+                db.close()
             
         except Exception:
             return False

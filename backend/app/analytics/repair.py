@@ -50,15 +50,18 @@ class RepairSynthesizer:
             sku = localized_cause.get("sku")
             attr = localized_cause.get("intervention", "").split("'")[1] if "'" in localized_cause.get("intervention", "") else "unknown"
             
-            # Mock authoritative lookup
-            authoritative_db = {"CHG-65W-01": {"power_watts": "65", "brand": "Generic"}}
+            # Attempt to extract the value from the intervention string
+            import re
+            match = re.search(r"restore missing attributes \{.*?:\s*'([^']+)'\}", localized_cause.get("intervention", ""))
+            if not match:
+                match = re.search(r"restore missing attributes \{.*?:\s*([^}]+)\}", localized_cause.get("intervention", ""))
             
-            if sku in authoritative_db and attr in authoritative_db[sku]:
-                value = authoritative_db[sku][attr]
+            if match:
+                value = match.group(1).strip()
                 proposed_patch = {
                     "target_sku": sku,
                     "operations": [{"op": "add", "path": f"/attributes/{attr}", "value": value}],
-                    "value_source": "authoritative_catalog_field"
+                    "value_source": "inferred_from_buyer_intent"
                 }
                 confidence = max(confidence, 90)
             else:

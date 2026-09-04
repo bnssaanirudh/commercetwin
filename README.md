@@ -54,9 +54,8 @@ CommerceTwin integrates directly with Razorpay Test Mode to create server-side o
 
 ## Measured Evaluation Results
 On our validation suite with standard chaos applied:
-- Baseline (No Repairs): RTY ~40%
-- CommerceTwin (With Replay Repairs): RTY ~85%
-- Intent Integrity: 100% (Guardrails held firm)
+- **Baseline (Keyword/Semantic)**: Prone to silent failures on edge cases.
+- **CommerceTwin (With Replay Repairs)**: Self-healing capability ensures robust transaction success across complex catalogs.
 
 ## Failure Story
 In our hero scenario, we injected a catalog failure by dropping the `power_watts` attribute from a top-selling MacBook charger. The AI buyer refused to purchase it due to missing safety constraints. The localizer identified the `MISSING_TYPED_ATTRIBUTE` leak, and the Synthesizer patched the catalog schema. Counterfactual replay proved the fix, capturing the lost ₹2,500.

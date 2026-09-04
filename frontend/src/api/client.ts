@@ -41,8 +41,12 @@ export const fetchRepairs = async () => {
   }
 };
 
-export const runExperiment = async (id: string) => {
-  const res = await fetch(`${API_BASE}/experiments/${id}/run`, { method: 'POST' });
+export const runExperiment = async (id: string, payload: any) => {
+  const res = await fetch(`${API_BASE}/experiments/${id}/run`, { 
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
   return await res.json();
 };
 

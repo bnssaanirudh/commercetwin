@@ -3,11 +3,11 @@
 This document outlines the evaluation methodology for the CommerceTwin architecture on the synthetic commerce benchmark.
 
 ## Dataset
-- **Size**: 10,000 synthetic buyer intents paired with a simulated catalog.
+- **Size**: 500 synthetic buyer intents paired with a simulated catalog.
 - **Splits**: 
-  - `dev.jsonl`: 2,000 intents
-  - `val.jsonl`: 3,000 intents
-  - `held_out.jsonl`: 5,000 intents
+  - `dev.jsonl`: 300 intents
+  - `val.jsonl`: 100 intents
+  - `held_out.jsonl`: 100 intents
 - **Split Policy**: The system is only tuned against the `val` split. `held_out` is frozen and strictly used for final reported metrics.
 
 ## Systems Tested
@@ -42,14 +42,8 @@ python evals/run_benchmark.py --system commercetwin --split held_out --seed 42
 ```
 
 ## Results Table
-*Metrics achieved on the frozen synthetic benchmark (with 95% bootstrap confidence intervals)*
 
-| System | RTY (%) | Intent Integrity (%) | CVR (%) | AVaR (₹) | REV (₹) |
-|---|---|---|---|---|---|
-| Keyword | 23.4 (±1.2) | 88.0 (±0.9) | 12.0 (±0.9) | 450,000 | 0 |
-| Semantic | 40.1 (±1.5) | 91.5 (±0.7) | 8.5 (±0.7) | 380,000 | 0 |
-| LLM-only | 65.2 (±1.8) | 94.0 (±0.5) | 6.0 (±0.5) | 210,000 | 0 |
-| **CommerceTwin** | **85.0 (±1.3)** | **99.5 (±0.2)** | **0.5 (±0.2)** | **0** | **210,000** |
+*Results are pending full integration and execution of the true benchmark.*
 
 ## Limitations
 - This is a synthetic benchmark and does not represent real-world live traffic.

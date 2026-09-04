@@ -32,7 +32,7 @@ class CommerceStateMachine:
         CommerceState.CART_CREATED: [CommerceState.PRECHECK, CommerceState.ABORTED],
         CommerceState.PRECHECK: [CommerceState.READY_FOR_PAYMENT, CommerceState.ABORTED],
         CommerceState.READY_FOR_PAYMENT: [CommerceState.PAYMENT, CommerceState.ABORTED],
-        CommerceState.PAYMENT: [CommerceState.COMPLETED, CommerceState.ABORTED, CommerceState.AMBIGUOUS_REMOTE_STATE],
+        CommerceState.PAYMENT: [CommerceState.PAYMENT_PENDING, CommerceState.ABORTED, CommerceState.AMBIGUOUS_REMOTE_STATE],
         CommerceState.PAYMENT_PENDING: [CommerceState.PAYMENT_SUCCEEDED, CommerceState.PAYMENT_FAILED, CommerceState.ABORTED],
         CommerceState.PAYMENT_SUCCEEDED: [CommerceState.COMPLETED, CommerceState.RECONCILIATION_REQUIRED],
         CommerceState.PAYMENT_FAILED: [CommerceState.ABORTED, CommerceState.RECONCILIATION_REQUIRED],

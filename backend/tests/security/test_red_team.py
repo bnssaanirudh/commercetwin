@@ -109,11 +109,8 @@ def test_payment_safety_duplicate_webhook():
     processor = WebhookProcessor()
     # Simulating a DB-backed webhook handler idempotency
     # First should pass, second should pass but do no state change
-    try:
-        res1 = processor.process("evt_test_sec_1", "payment.captured", {"payload": {"payment": {"entity": {"id": "pay_test_1"}}}})
-        res2 = processor.process("evt_test_sec_1", "payment.captured", {"payload": {"payment": {"entity": {"id": "pay_test_1"}}}})
-        assert res1 == True
-        assert res2 == True
-    except Exception:
-        pass # If DB not initialized in test context
+    res1 = processor.process("evt_test_sec_1", "payment.captured", {"payload": {"payment": {"entity": {"id": "pay_test_1"}}}})
+    res2 = processor.process("evt_test_sec_1", "payment.captured", {"payload": {"payment": {"entity": {"id": "pay_test_1"}}}})
+    assert res1 == True
+    assert res2 == True
 

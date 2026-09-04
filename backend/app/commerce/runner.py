@@ -88,6 +88,8 @@ class CommerceRunner:
                             amount_paise=self.final_total_paise,
                             receipt=self.receipt_id
                         )
+                        self._transition_and_trigger(CommerceState.PAYMENT_PENDING, {"order_id": order["id"]})
+                        return
                     except requests.exceptions.ReadTimeout:
                         # Network dropout. State is ambiguous.
                         self._transition_and_trigger(CommerceState.AMBIGUOUS_REMOTE_STATE)
@@ -99,7 +101,8 @@ class CommerceRunner:
                         return
                         
                 # Either successful remote call, or no adapter used (mock)
-                self._transition_and_trigger(CommerceState.COMPLETED)
+                self._transition_and_trigger(CommerceState.PAYMENT_PENDING, {"order_id": "mock_order_id"})
+
         except Exception as e:
             self.state_machine.transition_to(CommerceState.ABORTED, {"reason": f"INTERNAL_ERROR: {str(e)}"})
             raise

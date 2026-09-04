@@ -1,9 +1,14 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 const Payments: React.FC = () => {
-  // In a real app, we'd fetch this from the backend `/api/v1/payments` endpoint
-  // For the UI shell we'll just render an empty state for now until the backend endpoint is wired up.
-  const payments: any[] = [];
+  const [payments, setPayments] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch('http://localhost:8000/api/v1/payments')
+      .then(res => res.json())
+      .then(data => setPayments(data.items || []))
+      .catch(console.error);
+  }, []);
 
   return (
     <div>

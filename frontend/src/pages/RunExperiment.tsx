@@ -3,6 +3,10 @@ import { runExperiment } from '../api/client';
 
 const RunExperiment: React.FC = () => {
   const [intent, setIntent] = useState('');
+  const [merchantVersion, setMerchantVersion] = useState('v1');
+  const [chaosProfile, setChaosProfile] = useState('none');
+  const [seed, setSeed] = useState(42);
+  const [cohortSize, setCohortSize] = useState(1);
   const [status, setStatus] = useState<'idle' | 'running' | 'completed' | 'error'>('idle');
   const [result, setResult] = useState<any>(null);
 
@@ -13,8 +17,13 @@ const RunExperiment: React.FC = () => {
     setStatus('running');
     
     try {
-      // In a real integration, intent would be passed in the body. For now, we hit the API.
-      const data = await runExperiment('default-experiment');
+      const data = await runExperiment('default-experiment', {
+        intent,
+        merchant_version: merchantVersion,
+        chaos_profile: chaosProfile,
+        seed,
+        cohort_size: cohortSize
+      });
       setResult(data);
       setStatus('completed');
     } catch (err) {
@@ -49,7 +58,7 @@ const RunExperiment: React.FC = () => {
           <div className="grid-2" style={{ gap: '1.5rem', marginBottom: '1.5rem' }}>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--accent-cyan)' }}>Merchant Twin Version</label>
-              <select className="cyber-input" style={{ width: '100%' }}>
+              <select className="cyber-input" style={{ width: '100%' }} value={merchantVersion} onChange={(e) => setMerchantVersion(e.target.value)}>
                 <option value="v1">v1 - Base Catalog</option>
                 <option value="v2">v2 - Sandboxed Repair</option>
                 <option value="v3">v3 - Patched Production</option>
@@ -58,7 +67,7 @@ const RunExperiment: React.FC = () => {
             
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--accent-cyan)' }}>Chaos Profile</label>
-              <select className="cyber-input" style={{ width: '100%' }}>
+              <select className="cyber-input" style={{ width: '100%' }} value={chaosProfile} onChange={(e) => setChaosProfile(e.target.value)}>
                 <option value="none">None (Clean Run)</option>
                 <option value="drop_attribute">Attribute Dropout</option>
                 <option value="stale_inventory">Stale Inventory</option>
@@ -68,12 +77,12 @@ const RunExperiment: React.FC = () => {
             
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--accent-cyan)' }}>Execution Seed</label>
-              <input type="number" className="cyber-input" style={{ width: '100%' }} defaultValue="42" />
+              <input type="number" className="cyber-input" style={{ width: '100%' }} value={seed} onChange={(e) => setSeed(parseInt(e.target.value))} />
             </div>
             
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--accent-cyan)' }}>Cohort Size</label>
-              <input type="number" className="cyber-input" style={{ width: '100%' }} defaultValue="1" min="1" max="50" />
+              <input type="number" className="cyber-input" style={{ width: '100%' }} value={cohortSize} onChange={(e) => setCohortSize(parseInt(e.target.value))} min="1" max="50" />
             </div>
           </div>
 

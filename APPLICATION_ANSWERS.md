@@ -7,7 +7,7 @@ CommerceTwin
 Track 01 — AI Growth & Agentic Commerce
 
 **What it solves (120-180 words):**  
-AI-readable does not mean AI-transactable. As AI shopping agents become common, merchants will lose massive revenue because agentic traffic fails on ambiguous catalog data, missing schemas, and strict checkout constraints. CommerceTwin solves this by creating a closed-loop digital twin of the merchant. It simulates synthetic AI buyers, injects chaos (like missing wattage on a charger), and explicitly traces where the transaction aborted. It then synthesizes a JSON patch to repair the merchant's catalog and mathematically verifies the fix by replaying the exact failed cohort in a sandbox. We proved this increases Robust Transaction Yield from ~40% to 85% without sacrificing intent integrity.
+AI-readable does not mean AI-transactable. As AI shopping agents become common, merchants will lose massive revenue because agentic traffic fails on ambiguous catalog data, missing schemas, and strict checkout constraints. CommerceTwin solves this by creating a closed-loop digital twin of the merchant. It simulates synthetic AI buyers, injects chaos (like missing wattage on a charger), and explicitly traces where the transaction aborted. It then synthesizes a JSON patch to repair the merchant's catalog and mathematically verifies the fix by replaying the exact failed cohort in a sandbox. We demonstrate how this recovers lost transactions without sacrificing intent integrity.
 
 **GitHub:**  
 [Placeholder - URL to be added upon submission]
@@ -27,7 +27,11 @@ CommerceTwin is a closed-loop lab that simulates AI buyers, traces failures, and
 CommerceTwin bridges the gap between AI search and verified commerce. It creates a digital twin of a merchant, simulates AI buyers, injects catalog chaos, and pinpoints revenue leaks. It synthesizes JSON repairs and strictly verifies them through deterministic sandbox replay before they ever reach production.
 
 **100-word description:**  
-AI-readable catalogs aren't enough; they must be AI-transactable. CommerceTwin is a digital twin and chaos lab designed to secure agentic commerce revenue. It simulates synthetic AI buyers, forces failures, and traces exactly why an agent aborted a checkout. When a failure is localized, CommerceTwin's synthesizer proposes a precise merchant-side repair. Crucially, no repair is trusted blindly—it must be verified by replaying the exact failed transaction cohort through a sandbox. We successfully integrated Razorpay Test Mode and proved an increase in Robust Transaction Yield from ~40% to 85%, ensuring AI buyers can actually pay.
+AI-readable catalogs aren't enough; they must be AI-transactable. CommerceTwin is a digital twin and chaos lab designed to secure agentic commerce revenue. It simulates synthetic AI buyers, forces failures, and 
+traces exactly why an agent aborted a checkout. When a failure is localized, CommerceTwin's synthesizer proposes a 
+precise merchant-side repair. Crucially, no repair is trusted blindly-it must be verified by replaying the exact 
+failed transaction cohort through a sandbox. We successfully integrated Razorpay Test Mode and demonstrate an increase in 
+Robust Transaction Yield, ensuring AI buyers can actually pay.
 
 **One-line tagline:**  
 Turning AI-readable catalogs into AI-transactable revenue through simulated chaos and counterfactual repair.
