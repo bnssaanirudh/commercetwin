@@ -1,0 +1,12 @@
+{
+  "system": "keyword",
+  "split": "val",
+  "total_scenarios": 100,
+  "successful_transactions": 91,
+  "aborted_transactions": 9,
+  "abort_reasons": {
+    "NO_VALID_PRODUCTS_FOUND": 9
+  },
+  "average_latency_ms": 0.03,
+  "total_latency_ms": 3
+}

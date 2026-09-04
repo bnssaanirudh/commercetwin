@@ -1,0 +1,19 @@
+{
+  "imperfections": [
+    {
+      "sku": "CHG-USBC-20W-005",
+      "issue": "missing_wattage_attribute",
+      "description": "The wattage attribute is missing from structured data, relying only on title."
+    },
+    {
+      "sku": "STD-LAPT-ALU-001",
+      "issue": "incorrect_dimension_unit",
+      "description": "Dimensions listed in mm instead of cm, causing it to appear tiny."
+    },
+    {
+      "sku": "CBL-USBC2USBC-002",
+      "issue": "contradictory_compatibility",
+      "description": "Title says USB-C to USB-C but description says USB-A to Lightning."
+    }
+  ]
+}

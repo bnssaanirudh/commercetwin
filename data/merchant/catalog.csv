@@ -1,0 +1,151 @@
+wattage,port_count,resolution,bluetooth,wireless,shipping_class,title,variant,price_paise,connector,usb_pd,dimensions,sku,cost_paise,os_support,battery,inventory,description,category
+140,,,,,standard,FastCharge USB-C Adapter 140W (Model 1),,169240,USB-C,Yes,,CHG-USBC-140W-001,140157,,,150,A reliable 140W USB-C charger.,usb_c_chargers
+30,,,,,standard,FastCharge USB-C Adapter 30W (Model 2),,37521,USB-C,Yes,,CHG-USBC-30W-002,30214,,,62,A reliable 30W USB-C charger.,usb_c_chargers
+140,,,,,standard,FastCharge USB-C Adapter 140W (Model 3),,206174,USB-C,Yes,,CHG-USBC-140W-003,140479,,,54,A reliable 140W USB-C charger.,usb_c_chargers
+100,,,,,standard,FastCharge USB-C Adapter 100W (Model 4),,121335,USB-C,Yes,,CHG-USBC-100W-004,100316,,,57,A reliable 100W USB-C charger.,usb_c_chargers
+30,,,,,standard,FastCharge USB-C Adapter 30W (Model 5),,40844,USB-C,Yes,,CHG-USBC-30W-005,30219,,,23,A reliable 30W USB-C charger.,usb_c_chargers
+100,,,,,standard,FastCharge USB-C Adapter 100W (Model 6),,141764,USB-C,Yes,,CHG-USBC-100W-006,100201,,,369,A reliable 100W USB-C charger.,usb_c_chargers
+100,,,,,standard,FastCharge USB-C Adapter 100W (Model 7),,127010,USB-C,Yes,,CHG-USBC-100W-007,100314,,,311,A reliable 100W USB-C charger.,usb_c_chargers
+45,,,,,standard,FastCharge USB-C Adapter 45W (Model 8),,64390,USB-C,Yes,,CHG-USBC-45W-008,45103,,,91,A reliable 45W USB-C charger.,usb_c_chargers
+140,,,,,standard,FastCharge USB-C Adapter 140W (Model 9),,182701,USB-C,Yes,,CHG-USBC-140W-009,140316,,,89,A reliable 140W USB-C charger.,usb_c_chargers
+30,,,,,standard,FastCharge USB-C Adapter 30W (Model 10),,39666,USB-C,Yes,,CHG-USBC-30W-010,30490,,,57,A reliable 30W USB-C charger.,usb_c_chargers
+65,,,,,standard,FastCharge USB-C Adapter 65W (Model 11),,85194,USB-C,Yes,,CHG-USBC-65W-011,65149,,,186,A reliable 65W USB-C charger.,usb_c_chargers
+100,,,,,standard,FastCharge USB-C Adapter 100W (Model 12),,144552,USB-C,Yes,,CHG-USBC-100W-012,100235,,,383,A reliable 100W USB-C charger.,usb_c_chargers
+65,,,,,standard,FastCharge USB-C Adapter 65W (Model 13),,80896,USB-C,Yes,,CHG-USBC-65W-013,65374,,,482,A reliable 65W USB-C charger.,usb_c_chargers
+65,,,,,standard,FastCharge USB-C Adapter 65W (Model 14),,88955,USB-C,Yes,,CHG-USBC-65W-014,65140,,,434,A reliable 65W USB-C charger.,usb_c_chargers
+140,,,,,standard,FastCharge USB-C Adapter 140W (Model 15),,205798,USB-C,Yes,,CHG-USBC-140W-015,140416,,,195,A reliable 140W USB-C charger.,usb_c_chargers
+,6,,,,standard,MultiPort USB-C Hub 6-in-1 (Model 1),,7079,USB-C,,,HUB-USBC-6P-001,5360,"Windows, macOS, Linux",,348,Versatile 6-port USB-C hub.,usb_hubs
+,6,,,,standard,MultiPort USB-C Hub 6-in-1 (Model 2),,7481,USB-C,,,HUB-USBC-6P-002,5395,"Windows, macOS, Linux",,50,Versatile 6-port USB-C hub.,usb_hubs
+,6,,,,standard,MultiPort USB-C Hub 6-in-1 (Model 3),,7142,USB-C,,,HUB-USBC-6P-003,5051,"Windows, macOS, Linux",,242,Versatile 6-port USB-C hub.,usb_hubs
+,8,,,,standard,MultiPort USB-C Hub 8-in-1 (Model 4),,9430,USB-C,,,HUB-USBC-8P-004,6683,"Windows, macOS, Linux",,117,Versatile 8-port USB-C hub.,usb_hubs
+,8,,,,standard,MultiPort USB-C Hub 8-in-1 (Model 5),,11002,USB-C,,,HUB-USBC-8P-005,6959,"Windows, macOS, Linux",,341,Versatile 8-port USB-C hub.,usb_hubs
+,4,,,,standard,MultiPort USB-C Hub 4-in-1 (Model 6),,5531,USB-C,,,HUB-USBC-4P-006,3711,"Windows, macOS, Linux",,283,Versatile 4-port USB-C hub.,usb_hubs
+,6,,,,standard,MultiPort USB-C Hub 6-in-1 (Model 7),,7312,USB-C,,,HUB-USBC-6P-007,5083,"Windows, macOS, Linux",,148,Versatile 6-port USB-C hub.,usb_hubs
+,6,,,,standard,MultiPort USB-C Hub 6-in-1 (Model 8),,7475,USB-C,,,HUB-USBC-6P-008,5350,"Windows, macOS, Linux",,403,Versatile 6-port USB-C hub.,usb_hubs
+,4,,,,standard,MultiPort USB-C Hub 4-in-1 (Model 9),,5439,USB-C,,,HUB-USBC-4P-009,3517,"Windows, macOS, Linux",,422,Versatile 4-port USB-C hub.,usb_hubs
+,8,,,,standard,MultiPort USB-C Hub 8-in-1 (Model 10),,9393,USB-C,,,HUB-USBC-8P-010,6805,"Windows, macOS, Linux",,118,Versatile 8-port USB-C hub.,usb_hubs
+,8,,,,standard,MultiPort USB-C Hub 8-in-1 (Model 11),,10039,USB-C,,,HUB-USBC-8P-011,6708,"Windows, macOS, Linux",,212,Versatile 8-port USB-C hub.,usb_hubs
+,10,,,,standard,MultiPort USB-C Hub 10-in-1 (Model 12),,11412,USB-C,,,HUB-USBC-10P-012,8273,"Windows, macOS, Linux",,136,Versatile 10-port USB-C hub.,usb_hubs
+,8,,,,standard,MultiPort USB-C Hub 8-in-1 (Model 13),,10301,USB-C,,,HUB-USBC-8P-013,6982,"Windows, macOS, Linux",,469,Versatile 8-port USB-C hub.,usb_hubs
+,10,,,,standard,MultiPort USB-C Hub 10-in-1 (Model 14),,11452,USB-C,,,HUB-USBC-10P-014,8385,"Windows, macOS, Linux",,80,Versatile 10-port USB-C hub.,usb_hubs
+,10,,,,standard,MultiPort USB-C Hub 10-in-1 (Model 15),,12589,USB-C,,,HUB-USBC-10P-015,8246,"Windows, macOS, Linux",,450,Versatile 10-port USB-C hub.,usb_hubs
+,,,,,standard,Ergonomic Aluminum Laptop Stand (Model 1),,4383,,,30x26x14 cm,STD-LAPT-ALU-001,3000,,,91,Sturdy aluminum laptop stand.,laptop_stands
+,,,,,standard,Ergonomic Aluminum Laptop Stand (Model 2),,4661,,,27x28x9 cm,STD-LAPT-ALU-002,3000,,,315,Sturdy aluminum laptop stand.,laptop_stands
+,,,,,bulky,Ergonomic Wood Laptop Stand (Model 3),,5232,,,30x21x15 cm,STD-LAPT-WOO-003,3000,,,15,Sturdy wood laptop stand.,laptop_stands
+,,,,,bulky,Ergonomic Wood Laptop Stand (Model 4),,5101,,,30x25x6 cm,STD-LAPT-WOO-004,3000,,,403,Sturdy wood laptop stand.,laptop_stands
+,,,,,standard,Ergonomic Plastic Laptop Stand (Model 5),,2360,,,20x24x13 cm,STD-LAPT-PLA-005,1500,,,242,Sturdy plastic laptop stand.,laptop_stands
+,,,,,standard,Ergonomic Aluminum Laptop Stand (Model 6),,4809,,,30x24x15 cm,STD-LAPT-ALU-006,3000,,,64,Sturdy aluminum laptop stand.,laptop_stands
+,,,,,bulky,Ergonomic Wood Laptop Stand (Model 7),,4930,,,25x22x13 cm,STD-LAPT-WOO-007,3000,,,88,Sturdy wood laptop stand.,laptop_stands
+,,,,,bulky,Ergonomic Wood Laptop Stand (Model 8),,5302,,,25x27x5 cm,STD-LAPT-WOO-008,3000,,,316,Sturdy wood laptop stand.,laptop_stands
+,,,,,standard,Ergonomic Aluminum Laptop Stand (Model 9),,5314,,,24x23x5 cm,STD-LAPT-ALU-009,3000,,,459,Sturdy aluminum laptop stand.,laptop_stands
+,,,,,standard,Ergonomic Aluminum Laptop Stand (Model 10),,5253,,,21x21x12 cm,STD-LAPT-ALU-010,3000,,,494,Sturdy aluminum laptop stand.,laptop_stands
+,,,,,standard,Ergonomic Aluminum Laptop Stand (Model 11),,5373,,,22x22x15 cm,STD-LAPT-ALU-011,3000,,,282,Sturdy aluminum laptop stand.,laptop_stands
+,,,,,standard,Ergonomic Plastic Laptop Stand (Model 12),,2668,,,24x28x14 cm,STD-LAPT-PLA-012,1500,,,94,Sturdy plastic laptop stand.,laptop_stands
+,,,,,standard,Ergonomic Plastic Laptop Stand (Model 13),,2678,,,28x23x9 cm,STD-LAPT-PLA-013,1500,,,485,Sturdy plastic laptop stand.,laptop_stands
+,,,,,standard,Ergonomic Plastic Laptop Stand (Model 14),,2697,,,25x27x13 cm,STD-LAPT-PLA-014,1500,,,342,Sturdy plastic laptop stand.,laptop_stands
+,,,,,standard,Ergonomic Plastic Laptop Stand (Model 15),,2172,,,21x25x5 cm,STD-LAPT-PLA-015,1500,,,125,Sturdy plastic laptop stand.,laptop_stands
+,,,5.0,Yes,standard,Precision Wireless Mouse (Model 1),,3287,,,,MOU-WIR-001,2200,,,13,Ergonomic mouse.,mice
+,,,5.0,Yes,standard,Precision Wireless Mouse (Model 2),,3418,,,,MOU-WIR-002,2200,,,40,Ergonomic mouse.,mice
+,,,5.0,Yes,standard,Precision Wireless Mouse (Model 3),,2714,,,,MOU-WIR-003,2200,,,26,Ergonomic mouse.,mice
+,,,N/A,No,standard,Precision Wired Mouse (Model 4),,1482,,,,MOU-WRD-004,1200,,,131,Ergonomic mouse.,mice
+,,,N/A,No,standard,Precision Wired Mouse (Model 5),,1841,,,,MOU-WRD-005,1200,,,119,Ergonomic mouse.,mice
+,,,5.0,Yes,standard,Precision Wireless Mouse (Model 6),,3435,,,,MOU-WIR-006,2200,,,461,Ergonomic mouse.,mice
+,,,N/A,No,standard,Precision Wired Mouse (Model 7),,1585,,,,MOU-WRD-007,1200,,,252,Ergonomic mouse.,mice
+,,,N/A,No,standard,Precision Wired Mouse (Model 8),,1554,,,,MOU-WRD-008,1200,,,59,Ergonomic mouse.,mice
+,,,N/A,No,standard,Precision Wired Mouse (Model 9),,1652,,,,MOU-WRD-009,1200,,,220,Ergonomic mouse.,mice
+,,,N/A,No,standard,Precision Wired Mouse (Model 10),,1958,,,,MOU-WRD-010,1200,,,37,Ergonomic mouse.,mice
+,,,5.0,Yes,standard,Precision Wireless Mouse (Model 11),,2706,,,,MOU-WIR-011,2200,,,382,Ergonomic mouse.,mice
+,,,N/A,No,standard,Precision Wired Mouse (Model 12),,1920,,,,MOU-WRD-012,1200,,,65,Ergonomic mouse.,mice
+,,,5.0,Yes,standard,Precision Wireless Mouse (Model 13),,2850,,,,MOU-WIR-013,2200,,,284,Ergonomic mouse.,mice
+,,,N/A,No,standard,Precision Wired Mouse (Model 14),,1524,,,,MOU-WRD-014,1200,,,103,Ergonomic mouse.,mice
+,,,N/A,No,standard,Precision Wired Mouse (Model 15),,1717,,,,MOU-WRD-015,1200,,,457,Ergonomic mouse.,mice
+,,,,Yes,standard,Pro Membrane Wireless Keyboard (Model 1),Membrane,2884,,,,KBD-MEMB-WIR-001,2000,,,448,High quality keyboard.,keyboards
+,,,,Yes,standard,Pro Mechanical Wireless Keyboard (Model 2),Mechanical,5582,,,,KBD-MECH-WIR-002,4000,,,286,High quality keyboard.,keyboards
+,,,,Yes,standard,Pro Mechanical Wireless Keyboard (Model 3),Mechanical,5911,,,,KBD-MECH-WIR-003,4000,,,444,High quality keyboard.,keyboards
+,,,,Yes,standard,Pro Mechanical Wireless Keyboard (Model 4),Mechanical,5287,,,,KBD-MECH-WIR-004,4000,,,256,High quality keyboard.,keyboards
+,,,,Yes,standard,Pro Membrane Wireless Keyboard (Model 5),Membrane,2941,,,,KBD-MEMB-WIR-005,2000,,,94,High quality keyboard.,keyboards
+,,,,No,standard,Pro Mechanical Wired Keyboard (Model 6),Mechanical,4486,,,,KBD-MECH-WRD-006,3000,,,145,High quality keyboard.,keyboards
+,,,,No,standard,Pro Membrane Wired Keyboard (Model 7),Membrane,1326,,,,KBD-MEMB-WRD-007,1000,,,500,High quality keyboard.,keyboards
+,,,,No,standard,Pro Mechanical Wired Keyboard (Model 8),Mechanical,3770,,,,KBD-MECH-WRD-008,3000,,,121,High quality keyboard.,keyboards
+,,,,Yes,standard,Pro Mechanical Wireless Keyboard (Model 9),Mechanical,5697,,,,KBD-MECH-WIR-009,4000,,,39,High quality keyboard.,keyboards
+,,,,Yes,standard,Pro Membrane Wireless Keyboard (Model 10),Membrane,2701,,,,KBD-MEMB-WIR-010,2000,,,446,High quality keyboard.,keyboards
+,,,,Yes,standard,Pro Mechanical Wireless Keyboard (Model 11),Mechanical,5952,,,,KBD-MECH-WIR-011,4000,,,51,High quality keyboard.,keyboards
+,,,,Yes,standard,Pro Mechanical Wireless Keyboard (Model 12),Mechanical,5514,,,,KBD-MECH-WIR-012,4000,,,355,High quality keyboard.,keyboards
+,,,,Yes,standard,Pro Membrane Wireless Keyboard (Model 13),Membrane,2471,,,,KBD-MEMB-WIR-013,2000,,,465,High quality keyboard.,keyboards
+,,,,Yes,standard,Pro Mechanical Wireless Keyboard (Model 14),Mechanical,5543,,,,KBD-MECH-WIR-014,4000,,,224,High quality keyboard.,keyboards
+,,,,No,standard,Pro Membrane Wired Keyboard (Model 15),Membrane,1261,,,,KBD-MEMB-WRD-015,1000,,,376,High quality keyboard.,keyboards
+,,1080p,,,standard,CrystalClear 1080p Webcam (Model 1),,4114,USB-A,,,CAM-1080p-001,3000,,,212,1080p resolution webcam.,webcams
+,,720p,,,standard,CrystalClear 720p Webcam (Model 2),,2252,USB-A,,,CAM-720p-002,1500,,,163,720p resolution webcam.,webcams
+,,1080p,,,standard,CrystalClear 1080p Webcam (Model 3),,4184,USB-A,,,CAM-1080p-003,3000,,,394,1080p resolution webcam.,webcams
+,,720p,,,standard,CrystalClear 720p Webcam (Model 4),,1954,USB-A,,,CAM-720p-004,1500,,,328,720p resolution webcam.,webcams
+,,4K,,,standard,CrystalClear 4K Webcam (Model 5),,12790,USB-A,,,CAM-4K-005,8000,,,47,4K resolution webcam.,webcams
+,,4K,,,standard,CrystalClear 4K Webcam (Model 6),,10911,USB-A,,,CAM-4K-006,8000,,,145,4K resolution webcam.,webcams
+,,720p,,,standard,CrystalClear 720p Webcam (Model 7),,2369,USB-A,,,CAM-720p-007,1500,,,461,720p resolution webcam.,webcams
+,,720p,,,standard,CrystalClear 720p Webcam (Model 8),,2345,USB-A,,,CAM-720p-008,1500,,,199,720p resolution webcam.,webcams
+,,1080p,,,standard,CrystalClear 1080p Webcam (Model 9),,4041,USB-A,,,CAM-1080p-009,3000,,,436,1080p resolution webcam.,webcams
+,,4K,,,standard,CrystalClear 4K Webcam (Model 10),,12088,USB-A,,,CAM-4K-010,8000,,,323,4K resolution webcam.,webcams
+,,4K,,,standard,CrystalClear 4K Webcam (Model 11),,11669,USB-A,,,CAM-4K-011,8000,,,351,4K resolution webcam.,webcams
+,,4K,,,standard,CrystalClear 4K Webcam (Model 12),,11118,USB-A,,,CAM-4K-012,8000,,,349,4K resolution webcam.,webcams
+,,720p,,,standard,CrystalClear 720p Webcam (Model 13),,2372,USB-A,,,CAM-720p-013,1500,,,78,720p resolution webcam.,webcams
+,,1080p,,,standard,CrystalClear 1080p Webcam (Model 14),,4003,USB-A,,,CAM-1080p-014,3000,,,64,1080p resolution webcam.,webcams
+,,4K,,,standard,CrystalClear 4K Webcam (Model 15),,11727,USB-A,,,CAM-4K-015,8000,,,149,4K resolution webcam.,webcams
+,,,,No,standard,Studio Wired Headphones (Model 1),,3404,,,,AUD-WRD-001,2000,,N/A,377,Over-ear headphones.,headphones
+,,,,No,standard,Studio Wired Headphones (Model 2),,3003,,,,AUD-WRD-002,2000,,N/A,334,Over-ear headphones.,headphones
+,,,,No,standard,Studio Wired Headphones (Model 3),,3305,,,,AUD-WRD-003,2000,,N/A,138,Over-ear headphones.,headphones
+,,,,Yes,standard,Studio Wireless Headphones (Model 4),,5061,,,,AUD-WIR-004,3500,,20h,226,Over-ear headphones.,headphones
+,,,,No,standard,Studio Wired Headphones (Model 5),,2844,,,,AUD-WRD-005,2000,,N/A,180,Over-ear headphones.,headphones
+,,,,Yes,standard,Studio Wireless Headphones (Model 6),,6014,,,,AUD-WIR-006,3500,,20h,144,Over-ear headphones.,headphones
+,,,,Yes,standard,Studio Wireless Headphones (Model 7),,6197,,,,AUD-WIR-007,3500,,20h,292,Over-ear headphones.,headphones
+,,,,No,standard,Studio Wired Headphones (Model 8),,3360,,,,AUD-WRD-008,2000,,N/A,67,Over-ear headphones.,headphones
+,,,,Yes,standard,Studio Wireless Headphones (Model 9),,6553,,,,AUD-WIR-009,3500,,20h,363,Over-ear headphones.,headphones
+,,,,Yes,standard,Studio Wireless Headphones (Model 10),,5854,,,,AUD-WIR-010,3500,,20h,437,Over-ear headphones.,headphones
+,,,,No,standard,Studio Wired Headphones (Model 11),,3382,,,,AUD-WRD-011,2000,,N/A,85,Over-ear headphones.,headphones
+,,,,No,standard,Studio Wired Headphones (Model 12),,2927,,,,AUD-WRD-012,2000,,N/A,167,Over-ear headphones.,headphones
+,,,,No,standard,Studio Wired Headphones (Model 13),,3698,,,,AUD-WRD-013,2000,,N/A,417,Over-ear headphones.,headphones
+,,,,Yes,standard,Studio Wireless Headphones (Model 14),,6473,,,,AUD-WIR-014,3500,,20h,117,Over-ear headphones.,headphones
+,,,,Yes,standard,Studio Wireless Headphones (Model 15),,6067,,,,AUD-WIR-015,3500,,20h,191,Over-ear headphones.,headphones
+,,,,,hazardous,HighCap 26800mAh Power Bank (Model 1),,392684,,Yes,,PWR-BNK-26800MAH-001,268000,,26800mAh,218,Portable power bank.,power_banks
+,,,,,hazardous,HighCap 26800mAh Power Bank (Model 2),,381857,,Yes,,PWR-BNK-26800MAH-002,268000,,26800mAh,483,Portable power bank.,power_banks
+,,,,,hazardous,HighCap 10000mAh Power Bank (Model 3),,145938,,Yes,,PWR-BNK-10000MAH-003,100000,,10000mAh,419,Portable power bank.,power_banks
+,,,,,hazardous,HighCap 10000mAh Power Bank (Model 4),,146442,,Yes,,PWR-BNK-10000MAH-004,100000,,10000mAh,22,Portable power bank.,power_banks
+,,,,,hazardous,HighCap 10000mAh Power Bank (Model 5),,142096,,Yes,,PWR-BNK-10000MAH-005,100000,,10000mAh,180,Portable power bank.,power_banks
+,,,,,hazardous,HighCap 20000mAh Power Bank (Model 6),,288134,,Yes,,PWR-BNK-20000MAH-006,200000,,20000mAh,452,Portable power bank.,power_banks
+,,,,,hazardous,HighCap 26800mAh Power Bank (Model 7),,386784,,Yes,,PWR-BNK-26800MAH-007,268000,,26800mAh,146,Portable power bank.,power_banks
+,,,,,hazardous,HighCap 10000mAh Power Bank (Model 8),,143621,,Yes,,PWR-BNK-10000MAH-008,100000,,10000mAh,65,Portable power bank.,power_banks
+,,,,,hazardous,HighCap 20000mAh Power Bank (Model 9),,292330,,Yes,,PWR-BNK-20000MAH-009,200000,,20000mAh,449,Portable power bank.,power_banks
+,,,,,hazardous,HighCap 20000mAh Power Bank (Model 10),,253346,,Yes,,PWR-BNK-20000MAH-010,200000,,20000mAh,428,Portable power bank.,power_banks
+,,,,,hazardous,HighCap 20000mAh Power Bank (Model 11),,260979,,Yes,,PWR-BNK-20000MAH-011,200000,,20000mAh,430,Portable power bank.,power_banks
+,,,,,hazardous,HighCap 10000mAh Power Bank (Model 12),,126687,,Yes,,PWR-BNK-10000MAH-012,100000,,10000mAh,347,Portable power bank.,power_banks
+,,,,,hazardous,HighCap 10000mAh Power Bank (Model 13),,131953,,Yes,,PWR-BNK-10000MAH-013,100000,,10000mAh,152,Portable power bank.,power_banks
+,,,,,hazardous,HighCap 10000mAh Power Bank (Model 14),,149006,,Yes,,PWR-BNK-10000MAH-014,100000,,10000mAh,152,Portable power bank.,power_banks
+,,,,,hazardous,HighCap 20000mAh Power Bank (Model 15),,278488,,Yes,,PWR-BNK-20000MAH-015,200000,,20000mAh,214,Portable power bank.,power_banks
+,,,,,standard,Durable USB-C to Lightning Cable 1m (Model 1),,891,USB-C to Lightning,,,CBL-USB-C2Lightning-001,300,,,284,Braided USB-C to Lightning cable.,cables
+,,,,,standard,Durable USB-A to USB-C Cable 1m (Model 2),,872,USB-A to USB-C,,,CBL-USB-A2USB-C-002,300,,,69,Braided USB-A to USB-C cable.,cables
+,,,,,standard,Durable USB-A to USB-C Cable 1m (Model 3),,530,USB-A to USB-C,,,CBL-USB-A2USB-C-003,300,,,145,Braided USB-A to USB-C cable.,cables
+,,,,,standard,Durable USB-C to USB-C Cable 1m (Model 4),,498,USB-C to USB-C,,,CBL-USB-C2USB-C-004,300,,,232,Braided USB-C to USB-C cable.,cables
+,,,,,standard,Durable USB-A to USB-C Cable 1m (Model 5),,777,USB-A to USB-C,,,CBL-USB-A2USB-C-005,300,,,170,Braided USB-A to USB-C cable.,cables
+,,,,,standard,Durable USB-A to USB-C Cable 1m (Model 6),,722,USB-A to USB-C,,,CBL-USB-A2USB-C-006,300,,,271,Braided USB-A to USB-C cable.,cables
+,,,,,standard,Durable USB-C to USB-C Cable 1m (Model 7),,623,USB-C to USB-C,,,CBL-USB-C2USB-C-007,300,,,305,Braided USB-C to USB-C cable.,cables
+,,,,,standard,Durable USB-C to USB-C Cable 1m (Model 8),,564,USB-C to USB-C,,,CBL-USB-C2USB-C-008,300,,,372,Braided USB-C to USB-C cable.,cables
+,,,,,standard,Durable USB-A to USB-C Cable 1m (Model 9),,450,USB-A to USB-C,,,CBL-USB-A2USB-C-009,300,,,483,Braided USB-A to USB-C cable.,cables
+,,,,,standard,Durable USB-C to Lightning Cable 1m (Model 10),,759,USB-C to Lightning,,,CBL-USB-C2Lightning-010,300,,,491,Braided USB-C to Lightning cable.,cables
+,,,,,standard,Durable USB-C to Lightning Cable 1m (Model 11),,781,USB-C to Lightning,,,CBL-USB-C2Lightning-011,300,,,110,Braided USB-C to Lightning cable.,cables
+,,,,,standard,Durable USB-A to USB-C Cable 1m (Model 12),,644,USB-A to USB-C,,,CBL-USB-A2USB-C-012,300,,,495,Braided USB-A to USB-C cable.,cables
+,,,,,standard,Durable USB-C to Lightning Cable 1m (Model 13),,864,USB-C to Lightning,,,CBL-USB-C2Lightning-013,300,,,329,Braided USB-C to Lightning cable.,cables
+,,,,,standard,Durable USB-A to USB-C Cable 1m (Model 14),,748,USB-A to USB-C,,,CBL-USB-A2USB-C-014,300,,,73,Braided USB-A to USB-C cable.,cables
+,,,,,standard,Durable USB-C to Lightning Cable 1m (Model 15),,855,USB-C to Lightning,,,CBL-USB-C2Lightning-015,300,,,269,Braided USB-C to Lightning cable.,cables
+,,,,,standard,Compact USB-C to Ethernet Adapter (Model 1),,1306,USB-C to Ethernet,,,ADP-USB-C2Ethernet-001,800,,,177,Plug and play USB-C to Ethernet adapter.,adapters
+,,,,,standard,Compact USB-C to Ethernet Adapter (Model 2),,1318,USB-C to Ethernet,,,ADP-USB-C2Ethernet-002,800,,,293,Plug and play USB-C to Ethernet adapter.,adapters
+,,,,,standard,Compact USB-C to HDMI Adapter (Model 3),,1116,USB-C to HDMI,,,ADP-USB-C2HDMI-003,800,,,350,Plug and play USB-C to HDMI adapter.,adapters
+,,,,,standard,Compact USB-C to Ethernet Adapter (Model 4),,1310,USB-C to Ethernet,,,ADP-USB-C2Ethernet-004,800,,,472,Plug and play USB-C to Ethernet adapter.,adapters
+,,,,,standard,Compact USB-C to HDMI Adapter (Model 5),,1286,USB-C to HDMI,,,ADP-USB-C2HDMI-005,800,,,164,Plug and play USB-C to HDMI adapter.,adapters
+,,,,,standard,Compact USB-C to Ethernet Adapter (Model 6),,1259,USB-C to Ethernet,,,ADP-USB-C2Ethernet-006,800,,,10,Plug and play USB-C to Ethernet adapter.,adapters
+,,,,,standard,Compact USB-C to Ethernet Adapter (Model 7),,1154,USB-C to Ethernet,,,ADP-USB-C2Ethernet-007,800,,,230,Plug and play USB-C to Ethernet adapter.,adapters
+,,,,,standard,Compact USB-A to USB-C Adapter (Model 8),,1282,USB-A to USB-C,,,ADP-USB-A2USB-C-008,800,,,174,Plug and play USB-A to USB-C adapter.,adapters
+,,,,,standard,Compact USB-C to Ethernet Adapter (Model 9),,1216,USB-C to Ethernet,,,ADP-USB-C2Ethernet-009,800,,,355,Plug and play USB-C to Ethernet adapter.,adapters
+,,,,,standard,Compact USB-C to HDMI Adapter (Model 10),,1244,USB-C to HDMI,,,ADP-USB-C2HDMI-010,800,,,416,Plug and play USB-C to HDMI adapter.,adapters
+,,,,,standard,Compact USB-A to USB-C Adapter (Model 11),,1107,USB-A to USB-C,,,ADP-USB-A2USB-C-011,800,,,53,Plug and play USB-A to USB-C adapter.,adapters
+,,,,,standard,Compact USB-C to Ethernet Adapter (Model 12),,1246,USB-C to Ethernet,,,ADP-USB-C2Ethernet-012,800,,,334,Plug and play USB-C to Ethernet adapter.,adapters
+,,,,,standard,Compact USB-A to USB-C Adapter (Model 13),,1174,USB-A to USB-C,,,ADP-USB-A2USB-C-013,800,,,429,Plug and play USB-A to USB-C adapter.,adapters
+,,,,,standard,Compact USB-C to HDMI Adapter (Model 14),,1309,USB-C to HDMI,,,ADP-USB-C2HDMI-014,800,,,125,Plug and play USB-C to HDMI adapter.,adapters
+,,,,,standard,Compact USB-C to HDMI Adapter (Model 15),,1098,USB-C to HDMI,,,ADP-USB-C2HDMI-015,800,,,33,Plug and play USB-C to HDMI adapter.,adapters

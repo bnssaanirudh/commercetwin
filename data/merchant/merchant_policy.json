@@ -1,0 +1,21 @@
+{
+  "shipping_rules": {
+    "standard": {"cost_paise": 5000, "estimated_days": 3},
+    "bulky": {"cost_paise": 15000, "estimated_days": 5},
+    "hazardous": {"cost_paise": 20000, "estimated_days": 7}
+  },
+  "return_window_days": 30,
+  "quantity_limits": {
+    "default_per_sku": 5,
+    "usb_c_chargers": 2
+  },
+  "allowed_promotions": [
+    {"type": "discount_percentage", "max_value": 20},
+    {"type": "free_shipping", "min_order_value_paise": 200000}
+  ],
+  "restrictions": {
+    "no_dynamic_individualized_price_increases": true,
+    "no_hidden_cross_sell": true,
+    "no_production_writes": true
+  }
+}

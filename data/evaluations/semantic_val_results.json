@@ -1,0 +1,13 @@
+{
+  "system": "semantic",
+  "split": "val",
+  "total_scenarios": 100,
+  "successful_transactions": 28,
+  "aborted_transactions": 72,
+  "abort_reasons": {
+    "INVALID_CART_CONSTRUCTED": 59,
+    "NO_VALID_PRODUCTS_FOUND": 13
+  },
+  "average_latency_ms": 0.69,
+  "total_latency_ms": 69
+}
