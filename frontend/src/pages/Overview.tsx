@@ -3,13 +3,13 @@ import { fetchMetrics } from '../api/client';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const data = [
-  { name: 'Mon', ARC: 4000, ARL: 2400 },
-  { name: 'Tue', ARC: 3000, ARL: 1398 },
-  { name: 'Wed', ARC: 2000, ARL: 9800 },
-  { name: 'Thu', ARC: 2780, ARL: 3908 },
-  { name: 'Fri', ARC: 1890, ARL: 4800 },
-  { name: 'Sat', ARC: 2390, ARL: 3800 },
-  { name: 'Sun', ARC: 3490, ARL: 4300 },
+  { name: 'Mon', AVaR: 4000, REV: 2400 },
+  { name: 'Tue', AVaR: 3000, REV: 1398 },
+  { name: 'Wed', AVaR: 2000, REV: 9800 },
+  { name: 'Thu', AVaR: 2780, REV: 3908 },
+  { name: 'Fri', AVaR: 1890, REV: 4800 },
+  { name: 'Sat', AVaR: 2390, REV: 3800 },
+  { name: 'Sun', AVaR: 3490, REV: 4300 },
 ];
 
 const Overview: React.FC = () => {
@@ -24,7 +24,11 @@ const Overview: React.FC = () => {
   return (
     <div>
       <div className="page-header">
-        <h2 className="page-title">Dashboard Overview</h2>
+        <h2 className="page-title">
+          Dashboard Overview
+          <span className="badge badge-info" style={{ marginLeft: '12px', fontSize: '0.5em' }}>Synthetic Benchmark</span>
+          <span className="badge badge-warning" style={{ marginLeft: '6px', fontSize: '0.5em' }}>Razorpay Test Mode</span>
+        </h2>
         <p className="page-subtitle">Real-time metrics for CommerceTwin</p>
       </div>
       
@@ -35,21 +39,21 @@ const Overview: React.FC = () => {
         </div>
         <div className="card">
           <div className="card-title">Intent Integrity (II)</div>
-          <div className="card-value">{(metrics.II * 100).toFixed(1)}%</div>
+          <div className="card-value">{(metrics.Intent_Integrity * 100 || 0).toFixed(1)}%</div>
         </div>
         <div className="card">
-          <div className="card-title">Synthetic ARC</div>
-          <div className="card-value">₹{(metrics.ARC_paise_SYNTHETIC / 100).toLocaleString()}</div>
+          <div className="card-title">AVaR (Risk)</div>
+          <div className="card-value">₹{((metrics.AVaR || 0) / 100).toLocaleString()}</div>
         </div>
         <div className="card">
-          <div className="card-title">Synthetic ARL</div>
-          <div className="card-value">₹{(metrics.ARL_paise_SYNTHETIC / 100).toLocaleString()}</div>
+          <div className="card-title">REV (Recovered)</div>
+          <div className="card-value">₹{((metrics.REV || 0) / 100).toLocaleString()}</div>
         </div>
       </div>
 
       <div className="grid-2">
         <div className="card">
-          <div className="card-title">Value Capture vs Leak</div>
+          <div className="card-title">Risk vs Recovered Value</div>
           <div style={{ width: '100%', height: 300 }}>
             <ResponsiveContainer>
               <LineChart data={data}>
@@ -57,8 +61,8 @@ const Overview: React.FC = () => {
                 <XAxis dataKey="name" />
                 <YAxis />
                 <Tooltip />
-                <Line type="monotone" dataKey="ARC" stroke="#10b981" />
-                <Line type="monotone" dataKey="ARL" stroke="#ef4444" />
+                <Line type="monotone" dataKey="AVaR" stroke="#ef4444" />
+                <Line type="monotone" dataKey="REV" stroke="#10b981" />
               </LineChart>
             </ResponsiveContainer>
           </div>

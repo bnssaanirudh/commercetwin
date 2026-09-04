@@ -3,7 +3,7 @@
 This guide covers exactly how to run the deterministic 5-minute presentation pitch demo for CommerceTwin.
 
 ## Requirements
-- Python 3.10+
+- Python 3.12
 - The `backend/venv` activated with dependencies installed.
 - (Optional) `.env` file containing `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` for real test-mode transactions. If omitted, the demo will gracefully mock the transaction.
 

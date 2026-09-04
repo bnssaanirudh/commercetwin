@@ -54,24 +54,32 @@ class RepairVerifier:
         after_results = []
 
         for trace_id in cohort_trace_ids:
+            is_payment_repair = repair_proposal.get("repair_type") == "TRANSACTION_RELIABILITY_PATCH"
+
             # --- Baseline run (should fail) ---
             base_runner = cohort_factory(trace_id)
             base_runner.run_to_precheck()
-            if base_runner.state_machine.current_state == CommerceState.READY_FOR_PAYMENT:
+            if is_payment_repair and base_runner.state_machine.current_state == CommerceState.READY_FOR_PAYMENT:
                 base_runner.process_payment()
             before_state = base_runner.state_machine.current_state
+            
+            # For non-payment repairs, reaching READY_FOR_PAYMENT is a success.
+            before_success = (before_state == CommerceState.COMPLETED) or (not is_payment_repair and before_state == CommerceState.READY_FOR_PAYMENT)
+            
             before_results.append({
                 "trace_id": trace_id,
                 "outcome": before_state.value,
-                "success": before_state == CommerceState.COMPLETED,
+                "success": before_success,
             })
 
             # --- Patched run (should improve) ---
             patched_runner = patched_cohort_factory(trace_id)
             patched_runner.run_to_precheck()
-            if patched_runner.state_machine.current_state == CommerceState.READY_FOR_PAYMENT:
+            if is_payment_repair and patched_runner.state_machine.current_state == CommerceState.READY_FOR_PAYMENT:
                 patched_runner.process_payment()
             after_state = patched_runner.state_machine.current_state
+            
+            after_success = (after_state == CommerceState.COMPLETED) or (not is_payment_repair and after_state == CommerceState.READY_FOR_PAYMENT)
 
             # Check for payment safety regression: patched run ends in a dangerous ambiguous state
             # without transitioning to COMPLETED — treat as hard safety fail
@@ -85,7 +93,7 @@ class RepairVerifier:
             after_results.append({
                 "trace_id": trace_id,
                 "outcome": after_state.value,
-                "success": after_state == CommerceState.COMPLETED,
+                "success": after_success,
                 "payment_safety_regression": payment_regression,
             })
 

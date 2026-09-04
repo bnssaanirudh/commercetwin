@@ -5,11 +5,14 @@ description = "Backend for CommerceTwin digital twin and chaos lab"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi[standard]>=0.115.0",
+    "uvicorn[standard]",
     "pydantic>=2.9.2",
     "pydantic-settings>=2.5.2",
     "sqlalchemy>=2.0.35",
     "alembic>=1.13.3",
     "httpx>=0.27.2",
+    "requests",
+    "razorpay",
 ]
 
 [project.optional-dependencies]

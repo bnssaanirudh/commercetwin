@@ -7,18 +7,7 @@ export const fetchMetrics = async () => {
     return await res.json();
   } catch (err) {
     console.error(err);
-    // Mock fallback if backend is down
-    return {
-      RTY: 0.85,
-      II: 0.92,
-      ARC_paise_SYNTHETIC: 1250000,
-      ARL_paise_SYNTHETIC: 150000,
-      CVR: 0.03,
-      RVR: 0.8,
-      FRR: 0.4,
-      latency: { median_ms: 120, p95_ms: 350 },
-      llm: { total_calls: 1450 }
-    };
+    throw new Error("Metrics API unavailable");
   }
 };
 

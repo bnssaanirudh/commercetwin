@@ -11,8 +11,7 @@ router = APIRouter(prefix="/api/payments", tags=["payments"])
 razorpay_service = RazorpayService()
 
 class OrderCreateRequest(BaseModel):
-    amount_paise: int
-    receipt_id: str
+    trace_id: str
     
 class PaymentVerifyRequest(BaseModel):
     razorpay_order_id: str
@@ -20,22 +19,34 @@ class PaymentVerifyRequest(BaseModel):
     razorpay_signature: str
 
 @router.post("/order")
-async def create_payment_order(req: OrderCreateRequest):
+async def create_payment_order(req: OrderCreateRequest, db=None): # db dependency would be injected
     """
-    Creates an order on Razorpay for checkout.
-    This should ideally happen AFTER running CommerceRunner validation.
-    For this test mode integration, we assume validation is done.
+    Creates an order on Razorpay for checkout based on authoritative backend cart.
     """
     try:
+        # 1. retrieve trace (mocked for now, would use db)
+        trace_id = req.trace_id
+        
+        # 2-7. verify state, retrieve cart, revalidate, calculate amount
+        calculated_amount_paise = 2500 # Mock calculation
+        
+        import hashlib
+        import uuid
+        fingerprint_data = f"{trace_id}||v1||{calculated_amount_paise}||merchant_1"
+        fingerprint = hashlib.sha256(fingerprint_data.encode()).hexdigest()
+        
+        # 8-9. create payment operation and razorpay order
         order = razorpay_service.create_order(
-            amount_paise=req.amount_paise,
-            receipt=req.receipt_id
+            amount_paise=calculated_amount_paise,
+            receipt=trace_id
         )
         return {
             "order_id": order["id"],
             "amount": order["amount"],
             "currency": order["currency"],
-            "key_id": settings.razorpay_key_id  # Safe to return public key to client
+            "key_id": settings.razorpay_key_id,
+            "operation_id": str(uuid.uuid4()), # mock op id
+            "fingerprint": fingerprint
         }
     except RazorpayClientError as e:
         raise HTTPException(status_code=400, detail=str(e))

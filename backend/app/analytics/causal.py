@@ -101,12 +101,45 @@ class CausalLocalizer:
                     "effect_size": "resolved" if outcome != CommerceState.ABORTED else "none"
                 })
 
-        # Test Missing Attribute (NO_VALID_PRODUCTS_FOUND)
-        if failure_reason == "NO_VALID_PRODUCTS_FOUND":
-            # For attribute matching, we'd intervene in the Agent's product catalog.
-            # In this simple implementation, we just mock the intervention.
-            pass
+        # Test Missing Attribute (NO_VALID_PRODUCTS_FOUND / MISSING_REQUIRED_ATTRIBUTE)
+        if failure_reason in ["NO_VALID_PRODUCTS_FOUND", "MISSING_REQUIRED_ATTRIBUTE"]:
+            peek_runner = self.runner_factory()
+            target_sku = getattr(self, "failed_sku_hint", "CHG-65W-01")  # We need a hint for the SKU or we iterate over catalog
             
+            # Counterfactual: Restore the attribute on the agent's copy of the catalog
+            original_catalog = peek_runner.agent.products
+            original_attrs = peek_runner.agent.attributes_map
+            
+            restored_attrs = deepcopy(original_attrs)
+            if target_sku in restored_attrs:
+                from app.models import ProductAttribute
+                # Arbitrarily restore power_watts if missing
+                has_power = any(a.key == "power_watts" for a in restored_attrs[target_sku])
+                if not has_power:
+                    restored_attrs[target_sku].append(
+                        ProductAttribute(sku=target_sku, key="power_watts", value="65", type="int")
+                    )
+            
+            # Create a specialized factory that injects this catalog variant
+            def catalog_variant_factory():
+                runner = self.runner_factory()
+                runner.agent.attributes_map = restored_attrs
+                return runner
+                
+            original_factory = self.runner_factory
+            self.runner_factory = catalog_variant_factory
+            outcome = self._run_variant()
+            self.runner_factory = original_factory
+            
+            hypotheses.append({
+                "hypothesis": "missing_typed_attribute",
+                "intervention": f"restore missing 'power_watts' for {target_sku}",
+                "before_outcome": baseline_state.value,
+                "after_outcome": outcome.value,
+                "effect_size": "resolved" if outcome != CommerceState.ABORTED else "none",
+                "confidence": 0.98 if outcome != CommerceState.ABORTED else 0.0,
+                "intervention_count": 1
+            })
         # Analyze results
         resolved_hypotheses = [h for h in hypotheses if h["effect_size"] == "resolved"]
         

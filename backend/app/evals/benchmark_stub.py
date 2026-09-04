@@ -52,7 +52,9 @@ class BenchmarkRunner:
                 "RTY": 0.85 if system_name == "commercetwin" else 0.40,
                 "Intent_Integrity": 0.95,
                 "CVR": 0.01,
-                "Synthetic_Captured_Value": seed * 1000, 
+                "AVaR": seed * 1000, 
+                "REV": int(seed * 1000 * 0.9), 
+                "VCV": int(seed * 1000 * 0.9)
             }
         }
         

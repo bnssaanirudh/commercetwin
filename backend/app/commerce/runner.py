@@ -47,7 +47,7 @@ class CommerceRunner:
                 
             # SELECTION
             self._transition_and_trigger(CommerceState.SELECTION)
-            self.cart = self.agent.select_cart()
+            self.cart = self.agent.select_cart(valid_candidates)
             
             if not self.cart:
                 self.state_machine.transition_to(CommerceState.ABORTED, {"reason": "INVALID_CART_CONSTRUCTED"})

@@ -19,7 +19,7 @@ class LLMBuyer(BaseBuyerAgent):
         catalog_str = ""
         for p in self.products:
             attrs = self.attributes_map.get(p.sku, [])
-            attr_str = ", ".join([f"{a.attribute_key}={a.attribute_value}" for a in attrs])
+            attr_str = ", ".join([f"{a.key}={a.value}" for a in attrs])
             price = getattr(p, 'price_paise', 0) / 100.0
             catalog_str += f"SKU: {p.sku} | Title: {p.title} | Category: {p.category} | Price: {price} | Attrs: {attr_str}\n"
 

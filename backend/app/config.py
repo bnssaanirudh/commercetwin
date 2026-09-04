@@ -24,16 +24,24 @@ class Settings(BaseSettings):
     # Chaos Engine Configuration
     chaos_seed: int = Field(default=42)
 
+    # CORS configuration
+    cors_origins: str = Field(default="http://localhost:5173")
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore"
     )
+    
+    @property
+    def parsed_cors_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",")]
 
-# Validate config immediately on import but catch ValidationError to avoid printing secrets in stack traces if possible.
+# Validate config immediately on import
 try:
     settings = Settings()
+    if settings.razorpay_key_id.startswith("rzp_live"):
+        raise ValueError("Live Razorpay keys are explicitly forbidden in this environment.")
 except Exception as e:
-    logging.error("Configuration validation failed. Ensure required environment variables (e.g., RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET) are set.")
-    # We do NOT log the exception directly if it contains secret values in the trace.
-    raise RuntimeError("Configuration error: missing required environment variables.") from None
+    logging.error("Configuration validation failed.")
+    raise RuntimeError(f"Configuration error: {str(e)}") from None

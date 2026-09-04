@@ -16,7 +16,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.parsed_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -72,3 +72,15 @@ async def health_check(db: Session = Depends(get_db)):
         "debug": settings.app_debug,
         "database": db_status
     }
+
+@app.get("/api/v1/ready")
+@app.get("/ready")
+async def readiness_check(db: Session = Depends(get_db)):
+    """Readiness endpoint for load balancers."""
+    try:
+        from sqlalchemy import text
+        db.execute(text("SELECT 1"))
+        return {"status": "ready"}
+    except Exception:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=503, detail="Database unavailable")

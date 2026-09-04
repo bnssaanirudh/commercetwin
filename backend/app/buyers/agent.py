@@ -30,13 +30,8 @@ class BaseBuyerAgent(abc.ABC):
                 self.log_trace("CANDIDATE_REJECTED", {"sku": p.sku, "reason_code": res.reason_code})
         return valid_products
 
-    def select_cart(self) -> List[Product]:
+    def select_cart(self, valid_products: List[Product]) -> List[Product]:
         self.log_trace("BUYER_STARTED", {"intent_id": self.intent.intent_id})
-        
-        candidates = self.discover_candidates()
-        self.log_trace("CANDIDATES_DISCOVERED", {"skus": [p.sku for p in candidates]})
-        
-        valid_products = self.evaluate_candidates(candidates)
         
         # Simple greedy cart construction based on ranking (highest ranked valid items)
         cart = []

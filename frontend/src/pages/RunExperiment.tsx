@@ -1,19 +1,26 @@
 import React, { useState } from 'react';
+import { runExperiment } from '../api/client';
 
 const RunExperiment: React.FC = () => {
   const [intent, setIntent] = useState('');
-  const [status, setStatus] = useState<'idle' | 'running' | 'completed'>('idle');
+  const [status, setStatus] = useState<'idle' | 'running' | 'completed' | 'error'>('idle');
+  const [result, setResult] = useState<any>(null);
 
-  const handleRun = (e: React.FormEvent) => {
+  const handleRun = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!intent) return;
     
     setStatus('running');
     
-    // Simulate the execution of run_demo.py
-    setTimeout(() => {
+    try {
+      // In a real integration, intent would be passed in the body. For now, we hit the API.
+      const data = await runExperiment('default-experiment');
+      setResult(data);
       setStatus('completed');
-    }, 3000);
+    } catch (err) {
+      console.error(err);
+      setStatus('error');
+    }
   };
 
   return (
@@ -25,7 +32,7 @@ const RunExperiment: React.FC = () => {
 
       <div className="card" style={{ maxWidth: '800px' }}>
         <form onSubmit={handleRun}>
-          <div className="form-group">
+          <div className="form-group" style={{ marginBottom: '1.5rem' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--accent-cyan)' }}>
               Buyer Intent Definition
             </label>
@@ -37,6 +44,37 @@ const RunExperiment: React.FC = () => {
               placeholder='e.g., "I need a USB-C charger for my MacBook Air. It must support at least 65W USB Power Delivery and cost less than ₹3,000."'
               style={{ width: '100%', resize: 'vertical' }}
             />
+          </div>
+
+          <div className="grid-2" style={{ gap: '1.5rem', marginBottom: '1.5rem' }}>
+            <div className="form-group">
+              <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--accent-cyan)' }}>Merchant Twin Version</label>
+              <select className="cyber-input" style={{ width: '100%' }}>
+                <option value="v1">v1 - Base Catalog</option>
+                <option value="v2">v2 - Sandboxed Repair</option>
+                <option value="v3">v3 - Patched Production</option>
+              </select>
+            </div>
+            
+            <div className="form-group">
+              <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--accent-cyan)' }}>Chaos Profile</label>
+              <select className="cyber-input" style={{ width: '100%' }}>
+                <option value="none">None (Clean Run)</option>
+                <option value="drop_attribute">Attribute Dropout</option>
+                <option value="stale_inventory">Stale Inventory</option>
+                <option value="payment_timeout">Payment Timeout</option>
+              </select>
+            </div>
+            
+            <div className="form-group">
+              <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--accent-cyan)' }}>Execution Seed</label>
+              <input type="number" className="cyber-input" style={{ width: '100%' }} defaultValue="42" />
+            </div>
+            
+            <div className="form-group">
+              <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--accent-cyan)' }}>Cohort Size</label>
+              <input type="number" className="cyber-input" style={{ width: '100%' }} defaultValue="1" min="1" max="50" />
+            </div>
           </div>
 
           <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -59,21 +97,21 @@ const RunExperiment: React.FC = () => {
                 [SUCCESS] Trace logged to Revenue Leak graph.
               </span>
             )}
+            
+            {status === 'error' && (
+              <span style={{ color: 'red', fontFamily: 'var(--font-mono)' }}>
+                [ERROR] Failed to run experiment. Backend unavailable.
+              </span>
+            )}
           </div>
         </form>
       </div>
       
-      {status === 'completed' && (
+      {status === 'completed' && result && (
         <div className="card" style={{ marginTop: '2rem', maxWidth: '800px', borderColor: 'var(--accent-green)' }}>
           <h3 className="card-title" style={{ color: 'var(--accent-green)' }}>Simulation Output</h3>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: '#fff', whiteSpace: 'pre-wrap' }}>
-            {`> Booting Semantic Buyer...
-> Parsing Constraints: {"power_watts": 65, "budget": 3000}
-> Injecting Chaos: [MISSING_TYPED_ATTRIBUTE]
-> Transaction Aborted.
-> Trace Id: TR-NEW-001
-> Repair Patch Synthesized: {"power_watts": 65}
-> Replay Status: READY_FOR_PAYMENT`}
+            {JSON.stringify(result, null, 2)}
           </div>
         </div>
       )}

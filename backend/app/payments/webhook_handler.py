@@ -18,17 +18,12 @@ class WebhookProcessor:
 
     def process(self, event_id: str, event_type: str, payload: dict) -> bool:
         """
-        Processes a webhook event idempotently and monotonically.
+        Processes a webhook event idempotently and monotonically using the database.
         Returns True if processed or safely ignored (e.g. duplicate or out-of-order),
         Returns False if malformed.
         """
         if not event_id:
-            # If no event ID, we can't safely deduplicate. Reject or treat as malformed.
             return False
-
-        if event_id in self.processed_events:
-            # Idempotency: already processed, safe to return success
-            return True
 
         # Map razorpay events to our internal states
         event_state_map = {
@@ -39,10 +34,30 @@ class WebhookProcessor:
 
         target_state = event_state_map.get(event_type)
         if not target_state:
-            # Unknown event, safely ignore
-            self.processed_events.add(event_id)
             return True
 
+        from app.db import SessionLocal
+        from app.models import ProcessedWebhookEvent
+        from sqlalchemy.exc import IntegrityError
+        
+        db = SessionLocal()
+        try:
+            # Idempotency check via unique constraint
+            event = ProcessedWebhookEvent(
+                razorpay_event_id=event_id,
+                event_type=event_type,
+                processed_state=target_state
+            )
+            db.add(event)
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            # Idempotency: already processed, safe to return success
+            return True
+        finally:
+            db.close()
+
+        # Try to process monotonic state transition (in a real system, update payment operation)
         try:
             payment_entity = payload.get("payload", {}).get("payment", {}).get("entity", {})
             payment_id = payment_entity.get("id")
@@ -58,10 +73,7 @@ class WebhookProcessor:
             if target_level > current_level:
                 # Monotonic progression: only advance if the new state is strictly greater
                 self.payment_states[payment_id] = target_state
-                # Here we would normally emit a domain event or update a database
                 
-            # Mark event as processed regardless of whether it mutated state
-            self.processed_events.add(event_id)
             return True
             
         except Exception:

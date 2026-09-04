@@ -45,6 +45,10 @@ def run_experiment(experiment_id: str, db: Session = Depends(get_db)):
     # Should not block indefinitely, returns status
     return {"experiment_id": experiment_id, "status": "running", "job_id": "job_123"}
 
+@api_router.get("/experiments/{experiment_id}", tags=["experiments"])
+def get_experiment(experiment_id: str, db: Session = Depends(get_db)):
+    return {"experiment_id": experiment_id, "status": "completed"}
+
 @api_router.get("/experiments/jobs/{job_id}", tags=["experiments"])
 def get_experiment_status(job_id: str, db: Session = Depends(get_db)):
     return {"job_id": job_id, "status": "completed"}
@@ -58,31 +62,41 @@ def list_traces(page: int = 1, size: int = 50, db: Session = Depends(get_db)):
 def get_trace(trace_id: str, db: Session = Depends(get_db)):
     return {"trace_id": trace_id, "events": []}
 
-# --- Chaos ---
-@api_router.get("/chaos/profiles", tags=["chaos"])
-def list_chaos_profiles(db: Session = Depends(get_db)):
-    return {"items": []}
+# --- Failures ---
+@api_router.get("/failures", tags=["failures"])
+def list_failures(page: int = 1, size: int = 50, db: Session = Depends(get_db)):
+    return {"items": [], "total": 0, "page": page, "size": size}
 
-@api_router.post("/chaos/inject", tags=["chaos"])
-def inject_chaos(profile_id: str, db: Session = Depends(get_db)):
-    return {"status": "injected", "profile_id": profile_id}
+@api_router.get("/failures/{failure_id}", tags=["failures"])
+def get_failure(failure_id: str, db: Session = Depends(get_db)):
+    return {"failure_id": failure_id, "status": "open"}
 
-# --- Failures/Revenue Leak ---
-# (Note: /analytics/failures is handled in analytics/router.py, but we can add more here if needed)
-@api_router.get("/analytics/leak-summary", tags=["failures"])
-def get_leak_summary(db: Session = Depends(get_db)):
-    return {"total_simulated_lost_value_paise": 0, "top_clusters": []}
+@api_router.post("/failures/{failure_id}/repairs", tags=["failures"])
+def create_failure_repair(failure_id: str, db: Session = Depends(get_db)):
+    return {"repair_id": "rep_123", "status": "proposed"}
 
 # --- Repairs ---
 @api_router.get("/repairs", tags=["repairs"])
 def list_repairs(page: int = 1, size: int = 50, db: Session = Depends(get_db)):
     return {"items": [], "total": 0, "page": page, "size": size}
 
+@api_router.get("/repairs/{repair_id}", tags=["repairs"])
+def get_repair(repair_id: str, db: Session = Depends(get_db)):
+    return {"repair_id": repair_id, "status": "proposed"}
+
 @api_router.post("/repairs/{repair_id}/verify", tags=["repairs"])
 def verify_repair(repair_id: str, db: Session = Depends(get_db)):
     return {"repair_id": repair_id, "status": "VERIFIED"}
 
 # --- Replay ---
+@api_router.post("/replays", tags=["replay"])
+def create_replay(db: Session = Depends(get_db)):
+    return {"replay_id": "rep_456", "status": "running"}
+
+@api_router.get("/replays/{id}", tags=["replay"])
+def get_replay(id: str, db: Session = Depends(get_db)):
+    return {"replay_id": id, "status": "completed"}
+
 @api_router.post("/replay/cohort", tags=["replay"])
 def replay_cohort(cohort_id: str, repair_id: Optional[str] = None, db: Session = Depends(get_db)):
     return {"cohort_id": cohort_id, "status": "replaying"}
@@ -92,9 +106,9 @@ def replay_cohort(cohort_id: str, repair_id: Optional[str] = None, db: Session =
 def get_metrics(db: Session = Depends(get_db)):
     return {
         "RTY": 0.0,
-        "II": 0.0,
-        "ARC_paise_SYNTHETIC": 0,
-        "ARL_paise_SYNTHETIC": 0,
+        "Intent_Integrity": 0.0,
+        "AVaR": 0,
+        "REV": 0,
         "CVR": 0.0,
         "RVR": 0.0,
         "FRR": 0.0

@@ -64,6 +64,22 @@ def apply_commerce_chaos(products: List[Product], inventory: Dict[str, int],
         end_boundary="COMPLETED"
     )
     injections.append(inj)
+
+    # 4. CATALOG: Missing Typed Attribute
+    target_attr_sku = random.choice(skus)
+    inj = ChaosInjection(
+        chaos_id=f"DROP_ATTR_{target_attr_sku}",
+        family="catalog",
+        target=target_attr_sku,
+        severity="medium",
+        seed=seed,
+        before_state={"has_attribute": True},
+        mutated_state={"has_attribute": False},
+        reversible_patch={"sku": target_attr_sku, "action": "restore_attribute"},
+        start_boundary="READY_FOR_PAYMENT",
+        end_boundary="COMPLETED"
+    )
+    injections.append(inj)
     
     # We don't apply these instantly in the engine initialization for commerce chaos;
     # they are scheduled and triggered dynamically by boundaries. 
