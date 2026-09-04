@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 const Payments: React.FC = () => {
-  const [payments, setPayments] = useState<any[]>([]);
-
   // In a real app, we'd fetch this from the backend `/api/v1/payments` endpoint
   // For the UI shell we'll just render an empty state for now until the backend endpoint is wired up.
+  const payments: any[] = [];
 
   return (
     <div>

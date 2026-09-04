@@ -38,7 +38,7 @@ def test_scenario_7_stale_inventory():
     )
     runner.run_to_precheck()
     assert runner.state_machine.current_state.name == "ABORTED"
-    assert runner.state_machine.context.get("reason") == "INVENTORY_ZERO"
+    assert runner.state_machine.trace_events[-1]["payload"]["details"].get("reason") == "INVENTORY_ZERO"
 
 
 def test_scenario_8_stale_price():
@@ -53,7 +53,7 @@ def test_scenario_8_stale_price():
     )
     runner.run_to_precheck()
     assert runner.state_machine.current_state.name == "ABORTED"
-    assert runner.state_machine.context.get("reason") == "PRICE_MISMATCH"
+    assert runner.state_machine.trace_events[-1]["payload"]["details"].get("reason") == "PRICE_MISMATCH"
 
 
 def test_prompt_safety_hallucinated_sku():
@@ -68,7 +68,8 @@ def test_prompt_safety_hallucinated_sku():
     )
     runner.run_to_precheck()
     assert runner.state_machine.current_state.name == "ABORTED"
-    assert "MISSING" in runner.state_machine.context.get("reason", "") or "INVENTORY_ZERO" in runner.state_machine.context.get("reason", "")
+    reason = runner.state_machine.trace_events[-1]["payload"]["details"].get("reason", "")
+    assert "MISSING" in reason or "INVENTORY_ZERO" in reason
 
 
 def test_commerce_integrity_budget_exceeded():
@@ -90,15 +91,15 @@ def test_commerce_integrity_budget_exceeded():
 
 def test_repair_safety_modifies_buyer_constraint():
     """Ensure localizer rejects repairs that alter the buyer's constraint instead of merchant catalog"""
-    from app.analytics.repair import RepairVerifier
-    verifier = RepairVerifier()
+    from app.analytics.repair import RepairSynthesizer, RepairGuardrailViolation
+    synth = RepairSynthesizer()
     
-    patch = {"intent": {"max_budget_paise": 5000}} # Malicious patch trying to change buyer
-    result = verifier.verify("TR-FAIL", patch)
-    
-    # Our simple verifier should block non-catalog patches
-    # If not fully implemented, skip
-    pytest.skip("NOT IMPLEMENTED - Formal patch schema validation")
+    with pytest.raises(RepairGuardrailViolation):
+        synth.synthesize(
+            failure_cluster={"failure_id": "test"},
+            repair_type="CATALOG_SCHEMA_PATCH",
+            proposed_patch={"buyer_constraints": "modified"},
+        )
 
 
 def test_payment_safety_duplicate_webhook():

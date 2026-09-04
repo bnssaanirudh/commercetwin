@@ -5,10 +5,10 @@ const Navigation: React.FC = () => {
   return (
     <div className="top-nav">
       <div className="nav-left">
-        <div className="nav-logo">
+        <NavLink to="/" className="nav-logo" style={{ textDecoration: 'none', color: 'inherit' }}>
           <div className="nav-logo-icon"></div>
           CommerceTwin
-        </div>
+        </NavLink>
         <nav className="nav-links">
           <NavLink to="/dashboard" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>Dashboard</NavLink>
           <NavLink to="/run" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>Run Experiment</NavLink>

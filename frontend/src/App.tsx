@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navigation from './components/Navigation';
 import Overview from './pages/Overview';
 import Experiments from './pages/Experiments';
@@ -9,6 +9,7 @@ import Repairs from './pages/Repairs';
 import ChaosLab from './pages/ChaosLab';
 import Payments from './pages/Payments';
 import RunExperiment from './pages/RunExperiment';
+import Landing from './pages/Landing';
 
 const App: React.FC = () => {
   return (
@@ -17,7 +18,7 @@ const App: React.FC = () => {
         <Navigation />
         <main className="main-content">
           <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<Landing />} />
             
             <Route path="/dashboard" element={<Overview />} />
             <Route path="/run" element={<RunExperiment />} />
