@@ -112,7 +112,9 @@ jobs:
         run: npm ci
 
       - name: Lint (strict — no || true)
-        run: npm run lint
+        run: |
+          npm run lint -- --fix
+          npm run lint
 
       - name: Type-check (strict — no || true)
         run: npx tsc -b
