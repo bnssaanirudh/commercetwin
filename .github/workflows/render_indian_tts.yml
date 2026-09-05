@@ -1,4 +1,4 @@
-name: Render Indian English TTS
+name: Render Natural Male TTS
 on:
   push:
     branches: [tts-render-temp]
@@ -10,46 +10,40 @@ jobs:
       - name: Install system deps
         run: sudo apt-get update && sudo apt-get install -y espeak-ng ffmpeg
       - name: Install Python deps
-        run: pip install 'kokoro>=0.9.4' 'misaki[en]' soundfile numpy torch huggingface_hub
+        run: pip install 'kokoro==0.9.4' 'misaki[en]' soundfile numpy 'torch==2.7.1' huggingface_hub
       - name: Render narration
         run: |
           cat > /tmp/render.py <<'PY'
-          import torch, numpy as np, soundfile as sf
-          from huggingface_hub import hf_hub_download
-          from kokoro import KModel, KPipeline
+          import numpy as np, soundfile as sf
+          from kokoro import KPipeline
+          text = '''CommerceTwin is a digital twin for agentic commerce testing. Its goal is to make AI-driven checkout reliable before a real merchant or customer is affected.
 
-          text = '''CommerceTwin is a digital twin for agentic commerce testing. Its goal is to make AI driven checkout reliable before a real merchant or customer is affected.
+The core problem is simple: AI-readable does not always mean AI-transactable. A catalogue may look correct to a person, while an autonomous buyer fails because a required attribute, a price constraint, stock information, or payment state is ambiguous.
 
-          The core problem is simple: AI readable does not always mean AI transactable. A catalogue may look correct to a person, while an autonomous buyer fails because a required attribute, a price constraint, stock information, or payment state is ambiguous.
+CommerceTwin creates a safe environment where those failures can be tested deliberately. Synthetic buyers replay realistic shopping intents. A chaos layer injects controlled faults such as missing typed attributes, price mismatches, stale inventory, or network interruptions. The system then records the exact state transition where the transaction breaks.
 
-          CommerceTwin creates a safe environment where those failures can be tested deliberately. Synthetic buyers replay realistic shopping intents. A chaos layer injects controlled faults such as missing typed attributes, price mismatches, stale inventory, or network interruptions. The system then records the exact state transition where the transaction breaks.
+Instead of only reporting that checkout failed, CommerceTwin localises the cause. The dashboard connects technical failures to business impact by tracking transaction yield, intent integrity, latency, and revenue at risk.
 
-          Instead of only reporting that checkout failed, CommerceTwin localises the cause. The dashboard connects technical failures to business impact by tracking transaction yield, intent integrity, latency, and revenue at risk.
+From the experiment page, a user can define a buyer intent, select a merchant twin version, choose a chaos profile, set a reproducible seed, and launch a controlled run. Trace Explorer then exposes the state transitions and failure reason so the same case can be inspected and replayed.
 
-          From the experiment page, a user can define a buyer intent, select a merchant twin version, choose a chaos profile, set a reproducible seed, and launch a controlled run. Trace Explorer then exposes the state transitions and failure reason so the same case can be inspected and replayed.
+When CommerceTwin identifies a repairable catalogue problem, it generates a sandboxed patch. That repair is not blindly applied to production. The exact failed buyer intent is replayed against the repaired twin. Only when the new flow passes the required checks does the repair count as verified.
 
-          When CommerceTwin identifies a repairable catalogue problem, it generates a sandboxed patch. That repair is not blindly applied to production. The exact failed buyer intent is replayed against the repaired twin. Only when the new flow passes the required checks does the repair count as verified.
+Payment safety is handled through a deterministic state machine and idempotent webhook processing. So retries, duplicate webhooks, or temporary network failures do not create duplicate payment actions.
 
-          Payment safety is handled through a deterministic state machine and idempotent webhook processing. So retries, duplicate webhooks, or temporary network failures do not create duplicate payment actions.
-
-          The result is a closed loop for agentic commerce: simulate, break, localise, repair, replay, and verify. CommerceTwin gives merchants a way to find where AI buyers fail, understand the financial impact, and validate a fix before exposing it to real transactions.'''
-
-          model_path = hf_hub_download('jeevav62/kokoro-82m-indian-en', 'kokoro_converted.pth')
-          voice_path = hf_hub_download('jeevav62/kokoro-82m-indian-en', 'voicepack.pt')
-          config_path = hf_hub_download('hexgrad/Kokoro-82M', 'config.json')
-          model = KModel(repo_id='hexgrad/Kokoro-82M', config=config_path, model=model_path).to('cpu').eval()
-          pipeline = KPipeline(lang_code='b', repo_id='hexgrad/Kokoro-82M', model=model)
-          voice = torch.load(voice_path, map_location='cpu', weights_only=True)
-          gen = pipeline.generate_from_tokens(text, voice=voice, speed=0.94)
-          chunks = [a for _,_,a in gen]
-          audio = np.concatenate(chunks)
-          sf.write('CommerceTwin_Natural_Indian_Male.wav', audio, 24000)
+The result is a closed loop for agentic commerce: simulate, break, localise, repair, replay, and verify. CommerceTwin gives merchants a way to find where AI buyers fail, understand the financial impact, and validate a fix before exposing it to real transactions.'''
+          pipeline = KPipeline(lang_code='a')
+          chunks=[]
+          for _, _, audio in pipeline(text, voice='am_michael', speed=0.96, split_pattern=r'\n+'):
+              chunks.append(audio)
+              chunks.append(np.zeros(int(24000*0.28), dtype=np.float32))
+          audio=np.concatenate(chunks)
+          sf.write('CommerceTwin_Natural_Male.wav', audio, 24000)
           PY
           python /tmp/render.py
-          ffmpeg -y -i CommerceTwin_Natural_Indian_Male.wav -af "highpass=f=70,lowpass=f=12000,acompressor=threshold=-18dB:ratio=2:attack=12:release=180,alimiter=limit=0.95" -codec:a libmp3lame -b:a 192k CommerceTwin_Natural_Indian_Male.mp3
+          ffmpeg -y -i CommerceTwin_Natural_Male.wav -af "highpass=f=70,lowpass=f=12000,acompressor=threshold=-18dB:ratio=2:attack=12:release=180,alimiter=limit=0.95" -codec:a libmp3lame -b:a 192k CommerceTwin_Natural_Male.mp3
       - uses: actions/upload-artifact@v4
         with:
-          name: commercetwin-natural-indian-male
+          name: commercetwin-natural-male
           path: |
-            CommerceTwin_Natural_Indian_Male.wav
-            CommerceTwin_Natural_Indian_Male.mp3
+            CommerceTwin_Natural_Male.wav
+            CommerceTwin_Natural_Male.mp3
