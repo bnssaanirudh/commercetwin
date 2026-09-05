@@ -1,7 +1,8 @@
 import contextlib
-from app.services.commerce_service import CommerceService
+
 from app.commerce.runner import CommerceRunner, CommerceState
 from app.models import Product, TraceEvent, TransactionTrace
+from app.services.commerce_service import CommerceService
 
 
 class MockAgent:
@@ -18,7 +19,7 @@ class MockAgent:
     def evaluate_candidates(self, candidates):
         from app.models import Product
         p = Product(sku="SKU-1", title="Test", category="test")
-        setattr(p, "price_paise", 100)
+        p.price_paise = 100
         return [p]
 
     def select_cart(self, valid):
@@ -34,7 +35,7 @@ def test_commerce_service_create_experiment(db_session):
 def test_commerce_service_run_trace(db_session):
     svc = CommerceService(db_session)
     agent = MockAgent()
-    
+
     runner = svc.run_trace(
         agent=agent,
         inventory_db={"SKU-1": 10},
@@ -42,7 +43,7 @@ def test_commerce_service_run_trace(db_session):
         merchant_policy_db={"shipping_available": True, "flat_shipping_paise": 0},
         experiment_id="TEST-EXP"
     )
-    
+
     assert runner is not None
     # Check trace was persisted
     traces = db_session.query(TransactionTrace).all()
@@ -62,7 +63,7 @@ def test_commerce_service_aggregate_metrics(db_session):
 def test_commerce_service_localize_failure(db_session):
     svc = CommerceService(db_session)
     agent = MockAgent()
-    runner = svc.run_trace(
+    svc.run_trace(
         agent=agent,
         inventory_db={"SKU-1": 10},
         pricing_db={"SKU-1": 100},
@@ -70,7 +71,7 @@ def test_commerce_service_localize_failure(db_session):
     )
     traces = db_session.query(TransactionTrace).all()
     trace_id = traces[-1].trace_id
-    
+
     res = svc.localize_failure(trace_id)
     assert res["status"] == "localized"
 
@@ -79,11 +80,11 @@ def test_commerce_service_prepare_payment(db_session):
     svc = CommerceService(db_session)
     agent = MockAgent()
     runner = CommerceRunner(agent, {"SKU-1": 10}, {"SKU-1": 100}, {})
-    
+
     item = Product(sku="SKU-1", title="Test", category="test")
-    setattr(item, "price_paise", 100)
+    item.price_paise = 100
     runner.cart = [item]
-    
+
     runner.state_machine.transition_to(CommerceState.DISCOVERY)
     runner.state_machine.transition_to(CommerceState.EVALUATION)
     runner.state_machine.transition_to(CommerceState.SELECTION)
@@ -91,7 +92,7 @@ def test_commerce_service_prepare_payment(db_session):
     runner.state_machine.transition_to(CommerceState.PRECHECK)
     runner.state_machine.transition_to(CommerceState.READY_FOR_PAYMENT, {"total_paise": 100})
     assert runner.state_machine.current_state == CommerceState.READY_FOR_PAYMENT
-    
+
     # Needs razorpay config fix if it tries to contact real razorpay
     # But currently runner mock might bypass it, let's just test transition
     with contextlib.suppress(Exception):

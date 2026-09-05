@@ -2,6 +2,7 @@ from app.buyers.agent import BaseBuyerAgent
 from app.buyers.schemas import BuyerIntentSchema, HardConstraints, SoftPreferences
 from app.models import Product
 
+
 def test_base_buyer_agent():
     intent = BuyerIntentSchema(
         intent_id="test",
@@ -23,8 +24,8 @@ def test_base_buyer_agent():
             return valid_candidates
 
     agent = DummyAgent(intent, [p], {})
-    
+
     candidates = agent.discover_candidates()
     assert len(candidates) == 1
-    
+
     assert len(agent.trace_events) == 0

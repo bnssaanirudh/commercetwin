@@ -79,10 +79,13 @@ class WebhookProcessor:
         # Verify HMAC signature when both raw_body and signature are provided
         from app.config import settings
         webhook_secret = getattr(settings, "razorpay_webhook_secret", "")
-        if webhook_secret:
-            if not raw_body or not signature or not self.verify_signature(raw_body, signature, webhook_secret):
-                logger.warning("Webhook rejected: invalid HMAC signature event_id=%s", event_id)
-                return False
+        if webhook_secret and (
+            not raw_body
+            or not signature
+            or not self.verify_signature(raw_body, signature, webhook_secret)
+        ):
+            logger.warning("Webhook rejected: invalid HMAC signature event_id=%s", event_id)
+            return False
 
         from app.db import SessionLocal
         from app.models import PaymentOperation, ProcessedWebhookEvent

@@ -1,7 +1,5 @@
-import pytest
 from app.analytics.leak_graph import RevenueLeakCalculator
-from app.db import get_db
-from app.models import TransactionTrace, TraceEvent
+
 
 def test_leak_graph():
     generator = RevenueLeakCalculator(db=None)

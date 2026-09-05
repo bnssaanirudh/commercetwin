@@ -1,13 +1,14 @@
 from app.buyers.oracle import IntentOracle
-from app.buyers.schemas import HardConstraints, BuyerIntentSchema, SoftPreferences
+from app.buyers.schemas import BuyerIntentSchema, HardConstraints, SoftPreferences
 from app.models import Product, ProductAttribute
+
 
 def test_intent_oracle_evaluate_sku():
     intent = BuyerIntentSchema(
         intent_id="test",
         raw_intent="I want a laptop",
         hard_constraints=HardConstraints(
-            required_categories=["electronics"], 
+            required_categories=["electronics"],
             forbidden_categories=["clothing"],
             max_budget_paise=100000,
             required_attributes={"ram": "16GB"},
@@ -21,7 +22,7 @@ def test_intent_oracle_evaluate_sku():
         autonomy_level="autonomous",
         seed=42
     )
-    
+
     p = Product(sku="TEST", title="Laptop", category="electronics")
     attrs = [
         ProductAttribute(sku="TEST", key="ram", value="16GB", type="string"),
@@ -30,10 +31,10 @@ def test_intent_oracle_evaluate_sku():
         ProductAttribute(sku="TEST", key="os", value="Windows 11", type="string")
     ]
     oracle = IntentOracle(intent)
-    
+
     res = oracle.evaluate_sku(p, attrs)
     assert res.is_valid is True
-    
+
     # Missing required attribute
     bad_attrs1 = [ProductAttribute(sku="TEST", key="rating", value="4.5", type="float")]
     res = oracle.evaluate_sku(p, bad_attrs1)
@@ -98,12 +99,12 @@ def test_intent_oracle_evaluate_cart():
         seed=42
     )
     oracle = IntentOracle(intent)
-    
+
     p = Product(sku="TEST", title="Laptop", category="electronics")
-    
+
     res = oracle.evaluate_cart([p], 50000)
     assert res.is_valid is True
-    
+
     res = oracle.evaluate_cart([p], 150000)
     assert res.is_valid is False
     assert res.reason_code == "MAX_BUDGET_EXCEEDED"

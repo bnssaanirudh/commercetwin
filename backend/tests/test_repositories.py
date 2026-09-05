@@ -1,8 +1,7 @@
-from app.repositories import MerchantRepository, PaymentRepository, TraceRepository
-from app.db import get_db
-
-from app.db import get_db, engine
+from app.db import engine, get_db
 from app.models import Base
+from app.repositories import MerchantRepository, PaymentRepository, TraceRepository
+
 
 def test_repositories():
     Base.metadata.create_all(bind=engine)

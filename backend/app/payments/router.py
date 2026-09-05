@@ -2,12 +2,12 @@ import hashlib
 import json
 import uuid
 
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from app.db import get_db
 
 from app.config import settings
+from app.db import get_db
 from app.payments.razorpay_client import RazorpayClientError, RazorpayService
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
@@ -41,7 +41,7 @@ async def create_payment_order(req: OrderCreateRequest, db: Session = Depends(ge
         fingerprint = hashlib.sha256(fingerprint_data.encode()).hexdigest()
 
         operation_id = str(uuid.uuid4())
-        
+
         # Persist BEFORE network call to avoid lost state on crash
         from app.models import PaymentOperation
         op = PaymentOperation(
@@ -59,7 +59,7 @@ async def create_payment_order(req: OrderCreateRequest, db: Session = Depends(ge
             amount_paise=calculated_amount_paise,
             receipt=trace_id,
         )
-        
+
         # Now update with the real order ID
         op.razorpay_order_id = order["id"]
         db.commit()
