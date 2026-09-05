@@ -1,3 +1,4 @@
+import contextlib
 from app.services.commerce_service import CommerceService
 from app.commerce.runner import CommerceRunner, CommerceState
 from app.models import Product, TraceEvent, TransactionTrace
@@ -93,7 +94,5 @@ def test_commerce_service_prepare_payment(db_session):
     
     # Needs razorpay config fix if it tries to contact real razorpay
     # But currently runner mock might bypass it, let's just test transition
-    try:
+    with contextlib.suppress(Exception):
         svc.prepare_payment(runner, receipt_id="rec_test")
-    except Exception:
-        pass # If Razorpay key is missing, it will raise, but we just want coverage for now.
