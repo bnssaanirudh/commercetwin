@@ -19,7 +19,7 @@ const Overview: React.FC = () => {
       <p style={{ color: '#888' }}>{error}</p>
     </div>
   );
-  if (!metrics || Object.keys(metrics).length === 0) return (
+  if (!metrics || Object.keys(metrics).length === 0 || metrics.Total_Scenarios === 0 || metrics.Total_Eligible === 0) return (
     <div style={{ padding: '2rem', textAlign: 'center' }}>
       <h3 style={{ color: 'var(--accent-orange)' }}>No data</h3>
       <p style={{ color: '#888' }}>Run an experiment to generate metrics.</p>

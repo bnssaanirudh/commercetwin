@@ -341,31 +341,24 @@ class CommerceService:
             if snap:
                 snapshot_id = snap.snapshot_id
 
-            # Find other products in the same category that have the attribute
-            # the failing SKU is missing
             if hypothesis == "missing_typed_attribute":
-                target_prod = self.db.query(Product).filter(Product.sku == sku).first()
-                if target_prod:
-                    # Find products in same category with typed attributes
-                    sibling_skus = [
-                        p.sku for p in self.db.query(Product).filter(
-                            Product.category == target_prod.category,
-                            Product.sku != sku,
-                        ).limit(5).all()
-                    ]
-                    # Get their attributes as evidence
-                    for sibling_sku in sibling_skus:
-                        attrs = self.db.query(ProductAttribute).filter(
-                            ProductAttribute.sku == sibling_sku
-                        ).all()
-                        for attr in attrs:
-                            attributes_evidence.append({
-                                "key": attr.key,
-                                "value": attr.value,
-                                "type": attr.type,
-                            })
-                        if attributes_evidence:
-                            break  # One sibling with evidence is sufficient
+                from app.models import CatalogAttributeEvidence
+                # We need to find exactly what attribute was missing. The reason_code 
+                # might not tell us which key. But we know the generator will just look
+                # at all evidence for this SKU and create a patch.
+                evidences = self.db.query(CatalogAttributeEvidence).filter(
+                    CatalogAttributeEvidence.sku == sku
+                ).all()
+                
+                for ev in evidences:
+                    attributes_evidence.append({
+                        "key": ev.key,
+                        "value": ev.value,
+                        "type": ev.type,
+                    })
+
+        if not attributes_evidence:
+            return {"repair_id": None, "status": "MANUAL_REVIEW_REQUIRED", "reason": "No authoritative evidence found"}
 
         synth = RepairSynthesizer(self.db)
         return synth.synthesize(
@@ -383,7 +376,7 @@ class CommerceService:
     #  Repair verification (sandbox replay)                                #
     # ------------------------------------------------------------------ #
 
-    def verify_repair(self, repair_id: str) -> bool:
+    def verify_repair(self, repair_id: str) -> dict | bool:
         """
         Sandbox-replay the EXACT original trace using the immutable ReplaySnapshot.
 
@@ -481,87 +474,69 @@ class CommerceService:
                             ProductAttribute(sku=target_sku, key=key, value=value, type=attr_type)
                         )
                         existing_keys.add(key)
-        print(f"[DEBUG] sandbox_attrs_map for CHG-65W-01: {sandbox_attrs_map.get('CHG-65W-01')}")
-        for a in sandbox_attrs_map.get("CHG-65W-01", []):
-            print(f"  [DEBUG ATTR] key={getattr(a, 'key', 'no-key')} value={getattr(a, 'value', 'no-val')}")
 
         # ── Rebuild intent from snapshot ───────────────────────────────
         intent_data = snap.intent_json
-        try:
-            hc_data = intent_data.get("hard_constraints", {})
-            sp_data = intent_data.get("soft_preferences", {})
-            intent_schema = BuyerIntentSchema(
-                intent_id=intent_data.get("intent_id", "replay"),
-                raw_intent=intent_data.get("raw_intent", ""),
-                hard_constraints=HardConstraints(**hc_data) if hc_data else HardConstraints(),
-                soft_preferences=SoftPreferences(**sp_data) if sp_data else SoftPreferences(),
-                target_budget_paise=intent_data.get("target_budget_paise", 1000000),
-                max_budget_paise=intent_data.get("max_budget_paise", 1000000),
-                autonomy_level=intent_data.get("autonomy_level", "autonomous"),
-                seed=snap.seed,
-            )
-        except Exception:
-            return False
+        hc_data = intent_data.get("hard_constraints", {})
+        sp_data = intent_data.get("soft_preferences", {})
+        intent_schema = BuyerIntentSchema(
+            intent_id=intent_data.get("intent_id", "replay"),
+            raw_intent=intent_data.get("raw_intent", ""),
+            hard_constraints=HardConstraints(**hc_data) if hc_data else HardConstraints(),
+            soft_preferences=SoftPreferences(**sp_data) if sp_data else SoftPreferences(),
+            target_budget_paise=intent_data.get("target_budget_paise", 1000000),
+            max_budget_paise=intent_data.get("max_budget_paise", 1000000),
+            autonomy_level=intent_data.get("autonomy_level", "autonomous"),
+            seed=snap.seed,
+        )
 
         agent = SemanticBuyer(intent_schema, sandbox_products, sandbox_attrs_map)
 
-        try:
-            replay_runner = self.run_trace(
-                agent=agent,
-                inventory_db=inventory_db,
-                pricing_db=pricing_db,
-                merchant_policy_db=policy_db,
-                attributes_map=sandbox_attrs_map,
-                experiment_id="REPLAY",
-            )
+        replay_runner = self.run_trace(
+            agent=agent,
+            inventory_db=inventory_db,
+            pricing_db=pricing_db,
+            merchant_policy_db=policy_db,
+            attributes_map=sandbox_attrs_map,
+            experiment_id="REPLAY",
+        )
 
-            final_state = replay_runner.state_machine.current_state.name
-            is_success = final_state == "READY_FOR_PAYMENT"
+        final_state = replay_runner.state_machine.current_state.name
+        is_success = final_state == "READY_FOR_PAYMENT"
 
-            if is_success:
-                canonical_price = sum(pricing_db.get(p.sku, 0) for p in replay_runner.cart)
-                oracle = IntentOracle(intent_schema)
-                val_res = oracle.evaluate_cart(replay_runner.cart, canonical_price)
-                is_success = val_res.is_valid
+        if is_success:
+            canonical_price = sum(pricing_db.get(p.sku, 0) for p in replay_runner.cart)
+            oracle = IntentOracle(intent_schema)
+            val_res = oracle.evaluate_cart(replay_runner.cart, canonical_price)
+            is_success = val_res.is_valid
 
-            # Get the replay trace_id from the just-persisted trace
-            replay_trace = None
-            if self.db:
-                replay_trace = self.db.query(TransactionTrace).filter(
-                    TransactionTrace.run_id.like("RUN-%"),
-                ).order_by(TransactionTrace.created_at.desc()).first()
+        replay_id = f"REP-{uuid.uuid4().hex[:8]}"
 
-            replay_snap = None
-            if self.db and replay_trace:
-                replay_snap = self.db.query(ReplaySnapshot).filter(
-                    ReplaySnapshot.trace_id == replay_trace.trace_id
-                ).first()
-
-            replay = ReplayResult(
-                replay_id=f"REP-{uuid.uuid4().hex[:8]}",
-                repair_id=repair_id,
-                trace_id=original_trace.trace_id,
-                snapshot_id=snap.snapshot_id if not replay_snap else replay_snap.snapshot_id,
-                success=is_success,
-                before_state=original_trace.final_classification,
-                after_state=final_state,
-                metrics_diff={
-                    "old_state": original_trace.final_classification,
-                    "new_state": final_state,
-                    "operations_applied": len(operations),
-                },
-            )
-            if self.db:
-                self.db.add(replay)
-
+        replay = ReplayResult(
+            replay_id=replay_id,
+            repair_id=repair_id,
+            trace_id=original_trace.trace_id,
+            snapshot_id=snap.snapshot_id,
+            success=is_success,
+            before_state=original_trace.final_classification,
+            after_state=final_state,
+            metrics_diff={
+                "old_state": original_trace.final_classification,
+                "new_state": final_state,
+                "operations_applied": len(operations),
+            },
+        )
+        if self.db:
+            self.db.add(replay)
             prop.status = "verified" if is_success else "failed"
-            if self.db:
-                self.db.commit()
+            self.db.commit()
 
-            return is_success
-
-        except Exception:
-            return False
+        return {
+            "success": is_success,
+            "replay_id": replay_id,
+            "trace_id": replay_runner.trace_id,
+            "final_state": final_state
+        }
 
     # ------------------------------------------------------------------ #
     #  Payment preparation                                                 #

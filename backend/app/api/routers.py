@@ -80,6 +80,7 @@ def create_experiment(req: CreateExperimentRequest, db: Session = Depends(get_db
 class RunExperimentRequest(BaseModel):
     buyer_cohort_size: int = 10
     seed: int = 42
+    intent: str | None = None
 
 
 @api_router.post("/experiments/{experiment_id}/run", tags=["experiments"])
@@ -103,33 +104,82 @@ def run_experiment(experiment_id: str, req: RunExperimentRequest, db: Session = 
 
     for i in range(req.buyer_cohort_size):
         intent_id = f"synthetic-{experiment_id}-{i}"
+        user_intent = req.intent if req.intent else f"I need a product for test buyer {i}"
+        
         intent = BuyerIntentSchema(
             intent_id=intent_id,
-            raw_intent=f"I need a product for test buyer {i}",
-            hard_constraints=HardConstraints(required_categories=["electronics"]),
+            raw_intent=user_intent,
+            hard_constraints=HardConstraints(required_categories=["electronics"], min_attributes={"power_watts": 65}),
             soft_preferences=SoftPreferences(),
             target_budget_paise=50000,
             max_budget_paise=50000,
             autonomy_level="autonomous",
             seed=req.seed + i,
         )
-        p = Product(sku=f"SYNTH-{i}", title=f"Synthetic {i}", category="electronics", description="test")
+        p = Product(sku=f"SYNTH-{experiment_id}-{i}", merchant_id="merchant_demo", title=f"Synthetic Charger {i}", category="electronics", description=user_intent)
         p.price_paise = 10000
-        agent = SemanticBuyer(intent, [p], {})
+        db.add(p)
+        
+        from app.models import CatalogAttributeEvidence
+        import uuid
+        import datetime
+        import hashlib
+        
+        db.add(CatalogAttributeEvidence(
+            evidence_id=f"EV-{uuid.uuid4().hex[:8]}",
+            sku=p.sku,
+            key="power_watts",
+            value="65",
+            type="int",
+            catalog_version=1,
+            source="frontend_synthetic",
+            verified_at=datetime.datetime.now(datetime.UTC),
+            source_hash=hashlib.sha256(f"{p.sku}:power_watts:65".encode()).hexdigest()
+        ))
+        db.flush()
+        
+        from app.models import ProductAttribute
+        attr = ProductAttribute(sku=p.sku, key="power_watts", value="65", type="int")
+        db.add(attr)
+        attrs_map = {p.sku: [attr]}
+        
+        from app.chaos.engine import ChaosEngine
+        chaos_engine = ChaosEngine()
+        inv_db = {p.sku: 10}
+        price_db = {p.sku: 10000}
+        policy_db = {"shipping_available": True, "flat_shipping_paise": 0}
+        
+        chaos_engine.apply([p], inv_db, price_db, policy_db, req.seed + i, exp.chaos_profile)
+        mutated_products, mutated_inventory, mutated_pricing, mutated_policy = chaos_engine.get_state()
+        
+        agent = SemanticBuyer(intent, mutated_products, attrs_map)
         try:
             runner = svc.run_trace(
                 agent=agent,
-                inventory_db={f"SYNTH-{i}": 10},
-                pricing_db={f"SYNTH-{i}": 10000},
-                merchant_policy_db={"shipping_available": True, "flat_shipping_paise": 0},
+                inventory_db=mutated_inventory,
+                pricing_db=mutated_pricing,
+                merchant_policy_db=mutated_policy,
+                chaos_engine=chaos_engine,
                 experiment_id=experiment_id,
+                attributes_map=attrs_map,
             )
+            
+            # If the trace fails and chaos was applied, we might want to automatically localize and repair
+            # to populate the Repairs page, similar to run_benchmark
+            final_state = runner.state_machine.current_state.name
+            if final_state == "ABORTED":
+                localized = svc.localize_failure(runner.trace_id)
+                if localized.get("status") == "localized":
+                    svc.generate_repair(trace_id=runner.trace_id, localized_cause=localized)
+            
             results.append({
                 "buyer_id": intent_id,
-                "final_state": runner.state_machine.current_state.name,
+                "final_state": final_state,
             })
         except Exception as e:
             results.append({"buyer_id": intent_id, "final_state": "ERROR", "error": str(e)})
+
+    db.commit()
 
     successful = sum(1 for r in results if r["final_state"] == "READY_FOR_PAYMENT")
     return {

@@ -95,8 +95,10 @@ class MetricsEngine:
         # REV: Canonical value of recovered traces
         rev = sum(t.get("canonical_price", 0) for t in recovered)
 
-        # FRR: Recovered / Failed (how many failures were auto-healed)
-        frr = len(recovered) / len(failed) if failed else 0.0
+        # FRR: Recovered / Initially Failed Repairable
+        initially_failed = failed + recovered
+        repairable_failed = [t for t in initially_failed if t.get("repairable", False)]
+        frr = len(recovered) / len(repairable_failed) if repairable_failed else 0.0
 
         # Bootstrap CIs
         success_bits = [1.0 if t.get("success", False) else 0.0 for t in eligible_traces]
@@ -108,7 +110,7 @@ class MetricsEngine:
         cvr_bits = [0.0 if t.get("intent_preserved", False) else 1.0 for t in successful]
         cvr_lo, cvr_hi = bootstrap_ci(cvr_bits, rng=rng)
 
-        frr_bits = [1.0 if t.get("recovered", False) else 0.0 for t in failed]
+        frr_bits = [1.0 if t.get("recovered", False) else 0.0 for t in repairable_failed]
         frr_lo, frr_hi = bootstrap_ci(frr_bits, rng=rng)
 
         # Latency statistics

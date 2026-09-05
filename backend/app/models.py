@@ -59,6 +59,19 @@ class ProductAttribute(Base, TimestampMixin):
     type = Column(String, nullable=False)
 
 
+class CatalogAttributeEvidence(Base, TimestampMixin):
+    __tablename__ = "catalog_attribute_evidence"
+    evidence_id = Column(String, primary_key=True)
+    sku = Column(String, ForeignKey("products.sku"), nullable=False, index=True)
+    key = Column(String, nullable=False)
+    value = Column(String, nullable=False)
+    type = Column(String, nullable=False)
+    catalog_version = Column(Integer, nullable=False)
+    source = Column(String, nullable=False)
+    verified_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    source_hash = Column(String, nullable=False)
+
+
 class InventorySnapshot(Base, TimestampMixin):
     __tablename__ = "inventory_snapshots"
     inventory_id = Column(Integer, primary_key=True, autoincrement=True)

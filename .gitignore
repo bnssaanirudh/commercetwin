@@ -33,3 +33,6 @@ backend/htmlcov/
 
 .coverage*
 htmlcov/
+
+.coverage*
+htmlcov/

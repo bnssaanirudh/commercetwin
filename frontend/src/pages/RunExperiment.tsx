@@ -24,7 +24,8 @@ const RunExperiment: React.FC = () => {
       });
       const data = await runExperiment(expRes.experiment_id, {
         buyer_cohort_size: cohortSize,
-        seed: seed
+        seed: seed,
+        intent: intent
       });
       setResult(data);
       setStatus('completed');

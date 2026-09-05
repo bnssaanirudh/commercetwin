@@ -129,12 +129,22 @@ class CommerceRunner:
 
         try:
             orders = self.payment_adapter.service.fetch_orders_by_receipt(self.receipt_id)
-            if orders:
-                # Found the order — server processed it, link existing one.
-                self._transition_and_trigger(CommerceState.RECOVERED_SUCCESS, {"recovered_order_id": orders[0]["id"]})
+            
+            valid_orders = []
+            for o in orders:
+                if (
+                    o.get("amount") == self.final_total_paise
+                    and o.get("currency") == "INR"
+                    and o.get("status") in ("created", "paid", "attempted")
+                ):
+                    valid_orders.append(o)
+                    
+            if valid_orders:
+                # Found a matching order — server processed it, link existing one.
+                self._transition_and_trigger(CommerceState.RECOVERED_SUCCESS, {"recovered_order_id": valid_orders[0]["id"]})
                 self._transition_and_trigger(CommerceState.COMPLETED)
             else:
-                # Server truly never processed it.
+                # Server truly never processed it or no matching order exists.
                 self.state_machine.transition_to(CommerceState.ABORTED, {"reason": "REMOTE_ORDER_NOT_FOUND_AFTER_TIMEOUT"})
         except (OSError, ValueError, KeyError) as e:
             self.state_machine.transition_to(CommerceState.ABORTED, {"reason": f"RECONCILIATION_FAILED: {e!s}"})

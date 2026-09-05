@@ -95,33 +95,69 @@ def percentile(values: list[float], p: float) -> float:
     return sorted_vals[lo] + frac * (sorted_vals[hi] - sorted_vals[lo])
 
 
-def build_catalog_from_scenario(scenario: dict, pricing_db: dict, inventory_db: dict) -> list:
+def build_catalog_from_scenario(scenario: dict, pricing_db: dict, inventory_db: dict, attributes_map: dict | None = None, db_session=None) -> list:
     """
     Build an in-memory Product list from a scenario's oracle conditions.
     This is the key fix for RTY=0: without this, the DB is empty and the agent
     discovers nothing on a fresh clone.
     """
-    from app.models import Product
+    from app.models import Product, Merchant
 
     intent = scenario["intent"]
     required_cats = intent["hard_constraints"]["required_categories"]
     oracle = intent.get("oracle_valid_product_conditions", {})
     num_solutions = oracle.get("num_solutions", 1)
 
+    intent_id = intent.get("intent_id", "UNKNOWN")
+
     products = []
     # Synthesize num_solutions matching products per required category
     for cat in required_cats:
         for i in range(max(1, num_solutions)):
-            sku = f"BENCH-{cat.upper()[:8]}-{i:03d}"
+            sku = f"BENCH-{intent_id[:8]}-{cat.upper()[:8]}-{i:03d}"
             price = intent["target_budget_paise"] // max(len(required_cats), 1)
             price = max(price, 100)  # minimum 1 paise
 
-            p = Product(sku=sku, title=f"{cat} product {i}", category=cat, description=cat)
+            p = Product(sku=sku, merchant_id="merchant_benchmark", title=f"{cat} product {i}", category=cat, description=cat)
             p.price_paise = price
+
+            if db_session:
+                db_session.add(p)
+                db_session.flush()
 
             products.append(p)
             pricing_db[sku] = price
             inventory_db[sku] = 10  # plenty of stock
+
+            if attributes_map is not None:
+                attrs = []
+                req_attrs = intent.get("hard_constraints", {}).get("required_attributes", {})
+                min_attrs = intent.get("hard_constraints", {}).get("min_attributes", {})
+                for k, v in req_attrs.items():
+                    attrs.append({"key": k, "value": v, "type": type(v).__name__})
+                for k, v in min_attrs.items():
+                    attrs.append({"key": k, "value": v, "type": type(v).__name__})
+                attributes_map[sku] = attrs
+
+                if db_session:
+                    import uuid
+                    import hashlib
+                    import datetime
+                    from app.models import CatalogAttributeEvidence
+                    for attr in attrs:
+                        ev = CatalogAttributeEvidence(
+                            evidence_id=f"EV-{uuid.uuid4().hex[:8]}",
+                            sku=sku,
+                            key=attr["key"],
+                            value=str(attr["value"]),
+                            type=attr["type"],
+                            catalog_version=1,
+                            source="benchmark_oracle",
+                            verified_at=datetime.datetime.now(datetime.UTC),
+                            source_hash=hashlib.sha256(f"{sku}:{attr['key']}:{attr['value']}".encode()).hexdigest()
+                        )
+                        db_session.add(ev)
+                    db_session.flush()
 
     return products
 
@@ -164,6 +200,12 @@ def run_commercetwin(split: str, seed: int) -> dict:
 
     for i, item in enumerate(cohort):
         db_session = SessionLocal()
+        from app.models import Merchant
+        merchant = db_session.query(Merchant).filter(Merchant.merchant_id == "merchant_benchmark").first()
+        if not merchant:
+            db_session.add(Merchant(merchant_id="merchant_benchmark", name="Benchmark Merchant"))
+            db_session.commit()
+
         commerce_service = CommerceService(db_session=db_session)
         experiment_id = commerce_service.create_experiment(config)
 
@@ -191,20 +233,23 @@ def run_commercetwin(split: str, seed: int) -> dict:
             seed=seed,
         )
 
+        attributes_map: dict = {}
+
         # Build an in-memory catalog aligned with this scenario's oracle
-        products = build_catalog_from_scenario(item, pricing_db, inventory_db)
+        products = build_catalog_from_scenario(item, pricing_db, inventory_db, attributes_map=attributes_map, db_session=db_session)
 
         # Apply chaos
         chaos_engine = ChaosEngine()
         chaos_engine.apply(products, inventory_db, pricing_db, merchant_policy, seed, config["chaos_profile"])
         mutated_products, mutated_inventory, mutated_pricing, mutated_policy = chaos_engine.get_state()
 
-        agent = SemanticBuyer(intent_schema, mutated_products, {})
+        agent = SemanticBuyer(intent_schema, mutated_products, attributes_map)
         final_state = "ABORTED"
         failure_reason = None
         canonical_price = intent_data["target_budget_paise"]
         recovered = False
         intent_preserved = False
+        is_repairable = False
 
         try:
             runner = commerce_service.run_trace(
@@ -214,6 +259,7 @@ def run_commercetwin(split: str, seed: int) -> dict:
                 merchant_policy_db=mutated_policy,
                 chaos_engine=chaos_engine,
                 experiment_id=experiment_id,
+                attributes_map=attributes_map,
             )
             final_state = runner.state_machine.current_state.name
 
@@ -234,6 +280,7 @@ def run_commercetwin(split: str, seed: int) -> dict:
                     localized = commerce_service.localize_failure(trace_id)
 
                     if localized.get("status") == "localized":
+                        is_repairable = True
                         # generate_repair now creates a real FailureCluster internally
                         repair_data = commerce_service.generate_repair(
                             trace_id=trace_id,
@@ -288,6 +335,7 @@ def run_commercetwin(split: str, seed: int) -> dict:
             "final_state": final_state,
             "success": is_success,
             "recovered": recovered,
+            "repairable": is_repairable,
             "intent_preserved": intent_preserved,
             "failure_reason": failure_reason,
             "latency_ms": latency_ms,

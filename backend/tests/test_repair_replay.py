@@ -138,7 +138,8 @@ def test_noop_repair_stays_failed(db_session):
 
     result = svc.verify_repair(noop_proposal.repair_id)
 
-    assert result is False, "No-op repair must NOT verify successfully"
+    assert isinstance(result, dict)
+    assert result.get("success") is False, "No-op repair must NOT verify successfully"
 
     rr = db_session.query(ReplayResult).filter(
         ReplayResult.repair_id == noop_proposal.repair_id
@@ -164,7 +165,10 @@ def test_correct_repair_succeeds(db_session):
     intent = BuyerIntentSchema(
         intent_id="intent-repair-test",
         raw_intent="charger product 0",
-        hard_constraints=HardConstraints(required_categories=["charger"]),
+        hard_constraints=HardConstraints(
+            required_categories=["charger"],
+            min_attributes={"power_watts": 65}
+        ),
         soft_preferences=SoftPreferences(),
         target_budget_paise=5000,
         max_budget_paise=5000,
@@ -172,8 +176,10 @@ def test_correct_repair_succeeds(db_session):
         seed=42,
     )
 
-    product = Product(sku=sku, title="charger product 0", category="charger", description="charger")
+    product = Product(sku=sku, merchant_id="merchant-1", title="charger product 0", category="charger", description="charger")
     product.price_paise = 5000
+    db_session.add(product)
+    db_session.commit()
 
     # The attribute map is empty → oracle may accept or reject based on constraints
     attrs_map: dict = {sku: []}
@@ -190,18 +196,13 @@ def test_correct_repair_succeeds(db_session):
     trace = db_session.query(TransactionTrace).order_by(TransactionTrace.created_at.desc()).first()
     assert trace is not None
     original_state = trace.final_classification
+    
+    assert original_state == "ABORTED", "Trace must initially abort because power_watts is missing"
 
     snap = db_session.query(ReplaySnapshot).filter(
         ReplaySnapshot.trace_id == trace.trace_id
     ).first()
     assert snap is not None
-
-    # If it already passed, inject an attribute into the snapshot to distinguish
-    # original vs. repaired state for the test
-    if original_state == "READY_FOR_PAYMENT":
-        # No failure to repair — test is valid but trivially green; just verify
-        # that verify_repair with a valid proposal returns True
-        pass
 
     # Create failure cluster
     failure_id = f"FC-{uuid.uuid4().hex[:8]}"
@@ -246,14 +247,16 @@ def test_correct_repair_succeeds(db_session):
     result = svc.verify_repair(repair_proposal.repair_id)
 
     # The replay should complete successfully
+    assert isinstance(result, dict)
+    assert result.get("success") is True, "Correct repair must verify successfully"
+    assert result.get("final_state") == "READY_FOR_PAYMENT"
+
     rr = db_session.query(ReplayResult).filter(
         ReplayResult.repair_id == repair_proposal.repair_id
     ).first()
     assert rr is not None, "ReplayResult must be persisted by verify_repair"
-
-    # We just check that it ran and returned a boolean — success depends on oracle
-    assert isinstance(result, bool)
-    assert rr.success == result
+    assert rr.success is True
+    assert rr.after_state == "READY_FOR_PAYMENT"
 
 
 def test_replay_uses_snapshot_not_latest_trace(db_session):

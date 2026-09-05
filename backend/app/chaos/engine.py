@@ -58,6 +58,9 @@ class ChaosEngine:
             self.pending_injections.extend(apply_commerce_chaos(
                 self.cloned_products, self.cloned_inventory, self.cloned_pricing, self.cloned_policy, seed
             ))
+        if profile == "drop_attribute":
+            # This is handled externally by dropping from attributes_map in the caller
+            pass
 
     def trigger_boundary(self, boundary_name: str):
         """Applies dynamic mid-flight injections when a specific state boundary is crossed."""

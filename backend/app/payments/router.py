@@ -128,7 +128,7 @@ async def create_payment_order(req: OrderCreateRequest, db: Session = Depends(ge
 
 
 @router.post("/verify")
-async def verify_payment(req: PaymentVerifyRequest):
+async def verify_payment(req: PaymentVerifyRequest, db: Session = Depends(get_db)):
     """Verifies the HMAC SHA256 signature returned from Razorpay Checkout."""
     is_valid = razorpay_service.verify_payment_signature(
         razorpay_order_id=req.razorpay_order_id,
@@ -138,6 +138,18 @@ async def verify_payment(req: PaymentVerifyRequest):
 
     if not is_valid:
         raise HTTPException(status_code=400, detail="Invalid payment signature")
+
+    from app.models import PaymentOperation
+    from app.payments.webhook_handler import STATE_HIERARCHY
+    
+    op = db.query(PaymentOperation).filter(PaymentOperation.razorpay_order_id == req.razorpay_order_id).first()
+    if op:
+        current_level = STATE_HIERARCHY.get(op.state, 0)
+        target_level = STATE_HIERARCHY.get("captured", 0)
+        if target_level > current_level:
+            op.state = "captured"
+            op.razorpay_payment_id = req.razorpay_payment_id
+        db.commit()
 
     return {"status": "success", "message": "Payment verified successfully"}
 
