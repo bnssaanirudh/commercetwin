@@ -54,10 +54,11 @@ CommerceTwin integrates directly with Razorpay Test Mode to create server-side o
 On our strictly held-out evaluation suite (100 scenarios) with Razorpay Test Mode and chaos injected:
 - **Baseline (Keyword/Semantic)**: Prone to silent failures on edge cases.
 - **CommerceTwin (With Replay Repairs)**: Self-healing capability ensures robust transaction success across complex catalogs.
-  - **Robust Transaction Yield (RTY)**: `0.850 [0.780, 0.920]`
-  - **Intent Integrity**: `1.000` (Zero constraint violations)
-  - **Agentic Value at Risk (AVaR)**: `₹87,192.42`
-  - **Latency (p95)**: `17.68ms` (excluding LLM generation time)
+  - **Robust Transaction Yield (RTY)**: `0.930 [0.880, 0.980]`
+  - **Intent Integrity**: `0.914`
+  - **Agentic Value at Risk (AVaR)**: `₹38,716.88`
+  - **Latency (p95)**: `89.01ms` (excluding LLM generation time)
+  - **Commit SHA**: `070d5a35437ea9138fe876d6c452f3d4b2615bfb`
 
 ## Failure Story
 In our hero scenario, we injected a catalog failure by dropping the `power_watts` attribute from a top-selling MacBook charger. The AI buyer refused to purchase it due to missing safety constraints. The localizer identified the `MISSING_TYPED_ATTRIBUTE` leak, and the Synthesizer patched the catalog schema. Counterfactual replay proved the fix, capturing the lost ₹2,500.
