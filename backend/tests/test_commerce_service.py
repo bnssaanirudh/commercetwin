@@ -1,5 +1,3 @@
-import contextlib
-
 from app.commerce.runner import CommerceRunner, CommerceState
 from app.models import Product, TraceEvent, TransactionTrace
 from app.services.commerce_service import CommerceService
@@ -90,28 +88,29 @@ def test_commerce_service_prepare_payment(db_session):
     runner.state_machine.transition_to(CommerceState.SELECTION)
     runner.state_machine.transition_to(CommerceState.CART_CREATED, {"skus": ["SKU-1"]})
     runner.state_machine.transition_to(CommerceState.PRECHECK)
+    runner.final_total_paise = 100  # set explicitly since we bypassed _execute_prechecks
     runner.state_machine.transition_to(CommerceState.READY_FOR_PAYMENT, {"total_paise": 100})
     assert runner.state_machine.current_state == CommerceState.READY_FOR_PAYMENT
 
     class MockPaymentAdapter:
         def create_order(self, amount_paise, receipt):
             return {"id": "order_mock_123", "amount": amount_paise, "currency": "INR"}
-            
+
     runner.payment_adapter = MockPaymentAdapter()
 
     # Call prepare_payment (first time)
     svc.prepare_payment(runner, receipt_id="rec_test")
-    
+
     # Assert state
     assert runner.state_machine.current_state == CommerceState.PAYMENT_PENDING
-    
+
     # Assert DB has exactly one operation
     from app.models import PaymentOperation
     ops = db_session.query(PaymentOperation).all()
     assert len(ops) == 1
     assert ops[0].amount_paise == 100
     assert ops[0].razorpay_order_id == "order_mock_123"
-    
+
     # Call prepare_payment again (duplicate) to test idempotency
     # Should not crash, and should not duplicate the row
     svc.prepare_payment(runner, receipt_id="rec_test")

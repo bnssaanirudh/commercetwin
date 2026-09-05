@@ -1,4 +1,3 @@
-import datetime
 import random
 from typing import Any
 
@@ -13,7 +12,12 @@ def percentile(values: list[float], p: float) -> float:
     return sorted_vals[lo] + frac * (sorted_vals[hi] - sorted_vals[lo])
 
 
-def bootstrap_ci(values: list[float], n_boot: int = 2000, ci: float = 0.95, rng: random.Random = None) -> tuple[float, float]:
+def bootstrap_ci(
+    values: list[float],
+    n_boot: int = 2000,
+    ci: float = 0.95,
+    rng: random.Random | None = None,
+) -> tuple[float, float]:
     """Bootstrap confidence interval for a list of 0/1 values or floats."""
     if not values:
         return 0.0, 0.0
@@ -32,14 +36,23 @@ def bootstrap_ci(values: list[float], n_boot: int = 2000, ci: float = 0.95, rng:
 
 class MetricsEngine:
     """
-    Unified metrics calculator. Used by both the live CommerceService and run_benchmark.py
-    to prevent divergence in logic (e.g. RTY, Intent Integrity, AVaR, REV).
+    Unified metrics calculator. Used by both the live CommerceService and
+    run_benchmark.py to prevent divergence in logic.
+
+    Metrics computed:
+      RTY   — Robust Transaction Yield (successful / eligible)
+      II    — Intent Integrity (intent-preserving / successful)
+      CVR   — Constraint Violation Rate (violating / successful)
+      AVaR  — Agentic Value at Risk (paise lost in failed traces)
+      REV   — Recovered Eligible Value (paise recovered)
+      FRR   — Failure Recovery Rate (recovered / failed)
+      All with 95% bootstrap confidence intervals.
     """
 
     @staticmethod
     def compute_metrics(
-        traces: list[dict[str, Any]], 
-        seed: int = 42
+        traces: list[dict[str, Any]],
+        seed: int = 42,
     ) -> dict[str, Any]:
         """
         Expects traces as a list of dicts with:
@@ -53,44 +66,72 @@ class MetricsEngine:
         rng = random.Random(seed)
         eligible_traces = [t for t in traces if t.get("eligible", True)]
         ineligible_traces = [t for t in traces if not t.get("eligible", True)]
-        
+
         total_eligible = len(eligible_traces)
         successful = [t for t in eligible_traces if t.get("success", False)]
         failed = [t for t in eligible_traces if not t.get("success", False)]
+        recovered = [t for t in successful if t.get("recovered", False)]
 
         # RTY: Successful / Total Eligible
         rty = len(successful) / total_eligible if total_eligible > 0 else 0.0
-        
-        # Intent Integrity: Successful transactions that preserved intent / Total Successful
-        ii = sum(1 for t in successful if t.get("intent_preserved", False)) / len(successful) if successful else 0.0
-        
-        # Constraint Violation Rate: Successful transactions that violated intent / Total Successful
-        cvr = sum(1 for t in successful if not t.get("intent_preserved", False)) / len(successful) if successful else 0.0
+
+        # II: Intent-preserving successful / Total Successful
+        ii = (
+            sum(1 for t in successful if t.get("intent_preserved", False)) / len(successful)
+            if successful
+            else 0.0
+        )
+
+        # CVR: Constraint-violating successful / Total Successful
+        cvr = (
+            sum(1 for t in successful if not t.get("intent_preserved", False)) / len(successful)
+            if successful
+            else 0.0
+        )
 
         # AVaR: Canonical value of failed eligible traces
         avar = sum(t.get("canonical_price", 0) for t in failed)
-        
-        # REV: Recovered Eligible Value (canonical value of traces that were successfully recovered)
-        rev = sum(t.get("canonical_price", 0) for t in successful if t.get("recovered", False))
 
-        # Bootstrap 95% CI for RTY
+        # REV: Canonical value of recovered traces
+        rev = sum(t.get("canonical_price", 0) for t in recovered)
+
+        # FRR: Recovered / Failed (how many failures were auto-healed)
+        frr = len(recovered) / len(failed) if failed else 0.0
+
+        # Bootstrap CIs
         success_bits = [1.0 if t.get("success", False) else 0.0 for t in eligible_traces]
         rty_lo, rty_hi = bootstrap_ci(success_bits, rng=rng)
+
+        ii_bits = [1.0 if t.get("intent_preserved", False) else 0.0 for t in successful]
+        ii_lo, ii_hi = bootstrap_ci(ii_bits, rng=rng)
+
+        cvr_bits = [0.0 if t.get("intent_preserved", False) else 1.0 for t in successful]
+        cvr_lo, cvr_hi = bootstrap_ci(cvr_bits, rng=rng)
+
+        frr_bits = [1.0 if t.get("recovered", False) else 0.0 for t in failed]
+        frr_lo, frr_hi = bootstrap_ci(frr_bits, rng=rng)
 
         # Latency statistics
         latencies = [t.get("latency_ms", 0.0) for t in traces]
         mean_lat = sum(latencies) / len(latencies) if latencies else 0.0
         median_lat = percentile(latencies, 50)
         p95_lat = percentile(latencies, 95)
-        
-        recovered_count = sum(1 for t in successful if t.get("recovered", False))
+
+        recovered_count = len(recovered)
 
         return {
             "Robust_Transaction_Yield": round(rty, 4),
             "RTY_CI_95_lo": round(rty_lo, 4),
             "RTY_CI_95_hi": round(rty_hi, 4),
             "Intent_Integrity": round(ii, 4),
+            "II_CI_95_lo": round(ii_lo, 4),
+            "II_CI_95_hi": round(ii_hi, 4),
             "Constraint_Violation_Rate": round(cvr, 4),
+            "CVR_CI_95_lo": round(cvr_lo, 4),
+            "CVR_CI_95_hi": round(cvr_hi, 4),
+            "Failure_Recovery_Rate": round(frr, 4),
+            "FRR_CI_95_lo": round(frr_lo, 4),
+            "FRR_CI_95_hi": round(frr_hi, 4),
             "Agentic_Value_at_Risk_Paise": avar,
             "Recovered_Eligible_Value_Paise": rev,
             "Latency_Mean_ms": round(mean_lat, 2),

@@ -27,4 +27,9 @@ backend/commercetwin.db
 
 .coverage*
 htmlcov/
+backend/.coverage*
+backend/htmlcov/
 
+
+.coverage*
+htmlcov/

@@ -4,21 +4,22 @@ Tests: duplicate payments, delayed webhooks, out-of-order events, restart/replay
 """
 import pytest
 
-from app.db import Base, SessionLocal, engine
+import app.db as _app_db
 from app.models import PaymentOperation
 from app.payments.webhook_handler import WebhookProcessor
 
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_test_db():
-    Base.metadata.create_all(bind=engine)
+    # Tables are already created by the session-scoped conftest fixture.
+    # This module fixture is a no-op now but kept for compatibility.
     yield
-    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture
 def db():
-    session = SessionLocal()
+    # Use app.db.SessionLocal dynamically so the conftest patch is picked up.
+    session = _app_db.SessionLocal()
     try:
         yield session
     finally:

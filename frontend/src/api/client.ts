@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:8000/api/v1';
+const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1`;
 
 export const fetchMetrics = async () => {
   try {
@@ -7,7 +7,7 @@ export const fetchMetrics = async () => {
     return await res.json();
   } catch (err) {
     console.error(err);
-    throw new Error("Metrics API unavailable");
+    throw new Error('Metrics API unavailable');
   }
 };
 
@@ -44,21 +44,31 @@ export const fetchRepairs = async () => {
   }
 };
 
-export const createExperiment = async (payload: any) => {
-  const res = await fetch(`${API_BASE}/experiments`, { 
+export const triggerReplay = async (repairId: string) => {
+  const res = await fetch(`${API_BASE}/replays`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
+    body: JSON.stringify({ repair_id: repairId }),
+  });
+  if (!res.ok) throw new Error('Failed to trigger replay');
+  return await res.json();
+};
+
+export const createExperiment = async (payload: Record<string, unknown>) => {
+  const res = await fetch(`${API_BASE}/experiments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error('Failed to create experiment');
   return await res.json();
 };
 
-export const runExperiment = async (id: string, payload: any) => {
-  const res = await fetch(`${API_BASE}/experiments/${id}/run`, { 
+export const runExperiment = async (id: string, payload: Record<string, unknown>) => {
+  const res = await fetch(`${API_BASE}/experiments/${id}/run`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error('Failed to run experiment');
   return await res.json();

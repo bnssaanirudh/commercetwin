@@ -129,16 +129,16 @@ def build_catalog_from_scenario(scenario: dict, pricing_db: dict, inventory_db: 
 def run_commercetwin(split: str, seed: int) -> dict:
     """Run the CommerceTwin system on a dataset split and report metrics."""
     from app.buyers.configurations import SemanticBuyer
-    from app.buyers.schemas import BuyerIntentSchema, HardConstraints, SoftPreferences
-    from app.commerce.runner import CommerceRunner
-    from app.services.commerce_service import CommerceService
-    from app.chaos.engine import ChaosEngine
     from app.buyers.oracle import IntentOracle
+    from app.buyers.schemas import BuyerIntentSchema, HardConstraints, SoftPreferences
+    from app.chaos.engine import ChaosEngine
     from app.db import Base
+    from app.models import ReplayResult, TransactionTrace
+    from app.services.commerce_service import CommerceService
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # noqa: F841
     run_id = f"RUN-{uuid.uuid4().hex[:8]}"
     out_dir = create_raw_results_dir(run_id)
 
@@ -170,8 +170,8 @@ def run_commercetwin(split: str, seed: int) -> dict:
         start_time = time.time()
         intent_data = item["intent"]
         intent_id = intent_data["intent_id"]
-        oracle = intent_data.get("oracle_valid_product_conditions", {})
-        num_solutions = oracle.get("num_solutions", 0)
+        oracle_conds = intent_data.get("oracle_valid_product_conditions", {})
+        num_solutions = oracle_conds.get("num_solutions", 0)
 
         # Scenario is eligible only when the oracle says there ARE valid solutions
         eligible = num_solutions > 0
@@ -222,20 +222,39 @@ def run_commercetwin(split: str, seed: int) -> dict:
                     last = runner.state_machine.trace_events[-1]
                     failure_reason = last.get("payload", {}).get("details", {}).get("reason")
 
-                # REPAIR LOOP
-                from app.models import TransactionTrace
-                trace_record = db_session.query(TransactionTrace).order_by(TransactionTrace.created_at.desc()).first()
+                # ── REPAIR LOOP ──────────────────────────────────────────────
+                # Use the persisted trace_id (not "latest trace" heuristic)
+                trace_record = (
+                    db_session.query(TransactionTrace)
+                    .order_by(TransactionTrace.created_at.desc())
+                    .first()
+                )
                 if trace_record:
-                    localized = commerce_service.localize_failure(trace_record.trace_id)
+                    trace_id = trace_record.trace_id
+                    localized = commerce_service.localize_failure(trace_id)
+
                     if localized.get("status") == "localized":
+                        # generate_repair now creates a real FailureCluster internally
                         repair_data = commerce_service.generate_repair(
-                            failure_cluster_id="cluster-mock", 
-                            localized_cause=localized
+                            trace_id=trace_id,
+                            localized_cause=localized,
                         )
-                        
-                        if repair_data.get("status") != "MANUAL_REVIEW_REQUIRED" and "repair_id" in repair_data:
-                            verified = commerce_service.verify_repair(repair_data["repair_id"])
-                            if verified:
+
+                        if (
+                            repair_data.get("status") != "MANUAL_REVIEW_REQUIRED"
+                            and "repair_id" in repair_data
+                        ):
+                            repair_id = repair_data["repair_id"]
+                            commerce_service.verify_repair(repair_id)
+
+                            # Gate recovery on persisted ReplayResult.success only
+                            result_row = (
+                                db_session.query(ReplayResult)
+                                .filter(ReplayResult.repair_id == repair_id)
+                                .order_by(ReplayResult.created_at.desc())
+                                .first()
+                            )
+                            if result_row and result_row.success:
                                 recovered = True
                                 final_state = "READY_FOR_PAYMENT"
 
@@ -243,7 +262,7 @@ def run_commercetwin(split: str, seed: int) -> dict:
                 canonical_price = sum(mutated_pricing.get(p.sku, 0) for p in runner.cart)
 
             is_success = final_state == "READY_FOR_PAYMENT"
-            
+
             # Use Oracle to check Intent Integrity
             if is_success:
                 oracle_validator = IntentOracle(intent_schema)
@@ -278,9 +297,10 @@ def run_commercetwin(split: str, seed: int) -> dict:
         traces.append(trace)
 
         if (i + 1) % 10 == 0:
-            print(f"  [{i+1}/{len(cohort)}] {intent_id}: {final_state}", flush=True)
+            print(f"  [{i + 1}/{len(cohort)}] {intent_id}: {final_state}", flush=True)
 
     return _compute_and_save(traces, config, dataset_hash, out_dir, seed, split)
+
 
 
 def _run_keyword_baseline(split: str, seed: int) -> dict:
@@ -604,11 +624,18 @@ def _compute_and_save(traces: list, config: dict, dataset_hash: str, out_dir: st
         json.dump(metadata, f, indent=2)
 
     print(f"\nRun completed. Results -> {out_dir}", flush=True)
-    print(f"RTY={metrics.get('Robust_Transaction_Yield', 0):.3f} [{metrics.get('RTY_CI_95_lo', 0):.3f}, {metrics.get('RTY_CI_95_hi', 0):.3f}] | "
-          f"II={metrics.get('Intent_Integrity', 0):.3f} | "
-          f"AVaR={metrics.get('Agentic_Value_at_Risk_Paise', 0)} | "
-          f"Recovered={metrics.get('Total_Recovered', 0)} | "
-          f"lat_p95={metrics.get('Latency_p95_ms', 0):.1f}ms", flush=True)
+    print(
+        f"RTY={metrics.get('Robust_Transaction_Yield', 0):.3f} "
+        f"[{metrics.get('RTY_CI_95_lo', 0):.3f}, {metrics.get('RTY_CI_95_hi', 0):.3f}] | "
+        f"II={metrics.get('Intent_Integrity', 0):.3f} "
+        f"[{metrics.get('II_CI_95_lo', 0):.3f}, {metrics.get('II_CI_95_hi', 0):.3f}] | "
+        f"FRR={metrics.get('Failure_Recovery_Rate', 0):.3f} "
+        f"[{metrics.get('FRR_CI_95_lo', 0):.3f}, {metrics.get('FRR_CI_95_hi', 0):.3f}] | "
+        f"AVaR={metrics.get('Agentic_Value_at_Risk_Paise', 0)} | "
+        f"Recovered={metrics.get('Total_Recovered', 0)} | "
+        f"lat_p95={metrics.get('Latency_P95_ms', 0):.1f}ms",
+        flush=True,
+    )
     print(f"Metrics: {json.dumps(metrics, indent=2)}", flush=True)
     return metrics
 

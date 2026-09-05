@@ -6,6 +6,7 @@ Design principles:
 - Atomic idempotency: idempotency check and state update in a single transaction
 - Monotonic state: payment state only advances, never regresses
 - HMAC verification: validates webhook signature when secret is configured
+- Unknown-order events go to QuarantinedWebhookEvent — never corrupt PaymentOperation
 """
 import hashlib
 import hmac
@@ -19,6 +20,7 @@ logger = logging.getLogger(__name__)
 # Monotonic state hierarchy — higher value = later/more-final state.
 STATE_HIERARCHY: dict[str, int] = {
     "created": 1,
+    "pending_creation": 1,
     "authorized": 2,
     "captured": 3,
     "failed": 3,  # Terminal — same level as captured, cannot un-fail
@@ -88,20 +90,10 @@ class WebhookProcessor:
             return False
 
         from app.db import SessionLocal
-        from app.models import PaymentOperation, ProcessedWebhookEvent
+        from app.models import PaymentOperation, ProcessedWebhookEvent, QuarantinedWebhookEvent
 
         db = SessionLocal()
         try:
-            # ── ATOMIC BLOCK ─────────────────────────────────────────────
-            # Insert the idempotency record. If unique constraint fires,
-            # we've already processed this event — return True (safe dup).
-            event_record = ProcessedWebhookEvent(
-                razorpay_event_id=event_id,
-                event_type=event_type,
-                processed_state=target_state,
-            )
-            db.add(event_record)
-
             # Extract payment details from Razorpay payload
             payment_entity = (
                 payload.get("payload", {})
@@ -112,6 +104,23 @@ class WebhookProcessor:
             order_id = payment_entity.get("order_id")
             remote_amount = payment_entity.get("amount")
 
+            # ── STEP 1: Idempotency guard (narrow scope) ──────────────
+            # Only the unique-constraint insert is inside the try/except for
+            # IntegrityError so that other DB errors surface normally.
+            event_record = ProcessedWebhookEvent(
+                razorpay_event_id=event_id,
+                event_type=event_type,
+                processed_state=target_state,
+            )
+            try:
+                db.add(event_record)
+                db.flush()  # flush only — commit happens after state update
+            except IntegrityError:
+                db.rollback()
+                logger.debug("Duplicate webhook ignored event_id=%s", event_id)
+                return True  # Idempotent
+
+            # ── STEP 2: Find matching PaymentOperation ────────────────
             if order_id:
                 op = db.query(PaymentOperation).filter(
                     PaymentOperation.razorpay_order_id == order_id
@@ -127,38 +136,30 @@ class WebhookProcessor:
                         if payment_id:
                             op.razorpay_payment_id = payment_id
 
+                        # Reconciliation: order existing ≠ payment success.
+                        # Amount MUST match exactly.
                         if remote_amount is not None and remote_amount != op.amount_paise:
                             logger.error(
                                 "AMOUNT_MISMATCH order_id=%s expected=%d got=%d",
                                 order_id, op.amount_paise, remote_amount,
                             )
-                            # Tampering detected — transition to failed state
                             op.state = "failed"
                             db.commit()
                             return False
                 else:
-                    # Quarantine unknown operations
-                    import uuid
-                    logger.warning("Quarantining unknown webhook order_id=%s", order_id)
-                    quarantine_op = PaymentOperation(
-                        operation_id=str(uuid.uuid4()),
-                        trace_id="UNKNOWN",
-                        amount_paise=remote_amount or 0,
-                        state="QUARANTINED",
+                    # Unknown order — quarantine in dedicated table, not PaymentOperation
+                    logger.warning("Quarantining unknown webhook order_id=%s event_id=%s", order_id, event_id)
+                    quarantine = QuarantinedWebhookEvent(
+                        razorpay_event_id=event_id,
                         razorpay_order_id=order_id,
-                        razorpay_payment_id=payment_id,
+                        event_type=event_type,
+                        payload_json=payload,
                     )
-                    db.add(quarantine_op)
+                    db.add(quarantine)
 
             db.commit()
-            # ── END ATOMIC BLOCK ─────────────────────────────────────────
             return True
 
-        except IntegrityError:
-            db.rollback()
-            # Duplicate event_id — safe idempotent return
-            logger.debug("Duplicate webhook ignored event_id=%s", event_id)
-            return True
         except (OSError, ValueError) as e:
             db.rollback()
             logger.error("Webhook processing error event_id=%s: %s", event_id, e)

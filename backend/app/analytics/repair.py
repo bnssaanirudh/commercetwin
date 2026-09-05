@@ -1,4 +1,5 @@
 import uuid
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -17,6 +18,7 @@ BLOCKED_PATCH_KEYS = {
     "price_ceiling",
 }
 
+
 class RepairGuardrailViolation(Exception):
     """Raised when a proposed repair violates a safety policy."""
 
@@ -27,7 +29,7 @@ class RepairSynthesizer:
     All repairs are sandbox-only and subject to strict guardrails.
     """
 
-    def __init__(self, db: Session | None = None):
+    def __init__(self, db: Session | None = None) -> None:
         self.db = db
 
     def synthesize(
@@ -43,28 +45,55 @@ class RepairSynthesizer:
         verification_plan: str = "",
         confidence: int = 50,
         localized_cause: dict | None = None,
-    ) -> dict:
+        snapshot_id: str | None = None,
+        attributes_evidence: list | None = None,
+    ) -> dict[str, Any]:
         """
         Returns a validated RepairProposal dict (and optionally persists to DB).
         Raises RepairGuardrailViolation for any policy breach.
-        """
 
+        attributes_evidence: list of ProductAttribute-like dicts with keys
+          {key, value, type} from authoritative merchant products that HAVE the
+          missing attribute. Used to build real non-empty patch operations.
+        """
         evidence = evidence or []
         expected_affected_traces = expected_affected_traces or []
+        proposed_patch = proposed_patch or {}
+        attributes_evidence = attributes_evidence or []
 
-        # Auto-generation for MISSING_TYPED_ATTRIBUTE
+        # --- Auto-build patch for MISSING_TYPED_ATTRIBUTE ---
         if localized_cause and localized_cause.get("hypothesis") == "missing_typed_attribute":
             repair_type = "CATALOG_SCHEMA_PATCH"
             sku = localized_cause.get("sku", "unknown")
-            
-            # Check if we have catalog evidence
-            has_evidence = any(e.get("found") for e in evidence if e.get("type") == "catalog_schema")
-            
-            if not has_evidence:
-                # We must stop inferring product facts from the buyer's intent.
-                # Realism dictates that a merchant cannot just invent product attributes
-                # simply because a buyer requested them.
-                return {"status": "MANUAL_REVIEW_REQUIRED", "reason": f"Factual value for missing attribute on {sku} not found. Must be verified externally."}
+
+            if not attributes_evidence:
+                # No authoritative merchant evidence — cannot safely invent facts.
+                return {
+                    "status": "MANUAL_REVIEW_REQUIRED",
+                    "reason": (
+                        f"Factual value for missing attribute on {sku} not found in merchant catalog. "
+                        "Must be verified externally before a repair can be proposed."
+                    ),
+                }
+
+            # Build patch operations from authoritative evidence
+            operations = []
+            for attr in attributes_evidence:
+                operations.append({
+                    "op": "add",
+                    "path": f"/attributes/{attr['key']}",
+                    "value": attr["value"],
+                    "type": attr["type"],
+                    "evidence_source": "merchant_catalog",
+                })
+
+            proposed_patch = {
+                "target_sku": sku,
+                "operations": operations,
+            }
+            confidence = 85
+            safety_notes = "Patch sourced from authoritative merchant catalog evidence."
+            verification_plan = "Replay original failed trace with patched attributes in sandbox."
 
         # --- Guardrail 1: Repair type must be supported ---
         if repair_type not in ALLOWED_REPAIR_TYPES:
@@ -92,7 +121,7 @@ class RepairSynthesizer:
         if blocked:
             raise RepairGuardrailViolation(
                 f"Proposed patch contains blocked key '{blocked}'. "
-                f"Repairs cannot mutate buyer constraints or invent product facts."
+                "Repairs cannot mutate buyer constraints or invent product facts."
             )
 
         # --- Guardrail 3: Cannot increase price_paise ---
@@ -102,7 +131,7 @@ class RepairSynthesizer:
             if original is not None and new_price > original:
                 raise RepairGuardrailViolation(
                     f"Proposed patch increases price_paise from {original} to {new_price}. "
-                    f"Price increases based on inferred buyer willingness-to-pay are prohibited."
+                    "Price increases based on inferred buyer willingness-to-pay are prohibited."
                 )
 
         # --- Guardrail 4: Repairs cannot target production (no 'production' flag) ---
@@ -118,6 +147,7 @@ class RepairSynthesizer:
         proposal = {
             "repair_id": str(uuid.uuid4()),
             "failure_id": failure_cluster.get("failure_id"),
+            "snapshot_id": snapshot_id,
             "repair_type": repair_type,
             "proposed_patch": proposed_patch,
             "evidence": evidence,
@@ -135,6 +165,7 @@ class RepairSynthesizer:
             db_row = RepairProposal(
                 repair_id=proposal["repair_id"],
                 failure_id=proposal["failure_id"],
+                snapshot_id=proposal["snapshot_id"],
                 repair_type=proposal["repair_type"],
                 proposed_patch={
                     "patch": proposed_patch,

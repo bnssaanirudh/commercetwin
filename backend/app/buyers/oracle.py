@@ -15,7 +15,8 @@ class IntentOracle:
         self.intent = intent
 
     def _extract_attributes(self, product_attributes: list[ProductAttribute]) -> dict[str, str]:
-        return {attr.key: attr.value for attr in product_attributes}
+        extracted = {attr.key: attr.value for attr in product_attributes}
+        return extracted
 
     def evaluate_sku(self, product: Product, product_attributes: list[ProductAttribute]) -> ValidationResult:
         constraints = self.intent.hard_constraints
