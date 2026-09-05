@@ -61,7 +61,8 @@ def create_raw_results_dir(run_id: str) -> str:
     os.makedirs(path, exist_ok=True)
     return path
 
-with open("data/merchant_truth.json") as f:
+MERCHANT_TRUTH_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "merchant_truth.json")
+with open(MERCHANT_TRUTH_PATH) as f:
     MERCHANT_TRUTH = json.load(f)
 
 from app.models import CatalogAttributeEvidence, Product, ProductAttribute
@@ -713,4 +714,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
