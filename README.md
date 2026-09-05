@@ -59,7 +59,7 @@ On our strictly held-out evaluation suite (100 scenarios) with Razorpay Test Mod
   - **Robust Transaction Yield (RTY)**: `0.850 [0.780, 0.920]`
   - **Intent Integrity**: `1.000` (Zero constraint violations)
   - **Agentic Value at Risk (AVaR)**: `₹87,192.42`
-  - **Latency (p95)**: `16.6ms` (excluding LLM generation time)
+  - **Latency (p95)**: `17.68ms` (excluding LLM generation time)
 
 ## Failure Story
 In our hero scenario, we injected a catalog failure by dropping the `power_watts` attribute from a top-selling MacBook charger. The AI buyer refused to purchase it due to missing safety constraints. The localizer identified the `MISSING_TYPED_ATTRIBUTE` leak, and the Synthesizer patched the catalog schema. Counterfactual replay proved the fix, capturing the lost ₹2,500.

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { runExperiment } from '../api/client';
+import { runExperiment, createExperiment } from '../api/client';
 
 const RunExperiment: React.FC = () => {
   const [intent, setIntent] = useState('');
@@ -17,7 +17,12 @@ const RunExperiment: React.FC = () => {
     setStatus('running');
     
     try {
-      const data = await runExperiment('default-experiment', {
+      const expRes = await createExperiment({
+        merchant_version: merchantVersion,
+        chaos_profile: chaosProfile,
+        seed: seed
+      });
+      const data = await runExperiment(expRes.experiment_id, {
         intent,
         merchant_version: merchantVersion,
         chaos_profile: chaosProfile,

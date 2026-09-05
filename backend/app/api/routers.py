@@ -55,6 +55,19 @@ def list_experiments(page: int = 1, size: int = 50, db: Session = Depends(get_db
     total = db.query(Experiment).count()
     return {"items": [{"id": item.experiment_id, "experiment_id": item.experiment_id} for item in items], "total": total, "page": page, "size": size}
 
+class CreateExperimentRequest(BaseModel):
+    merchant_version: str = "v1"
+    buyer_cohort_version: str = "v1"
+    chaos_profile: str = "none"
+    seed: int = 42
+    
+@api_router.post("/experiments", tags=["experiments"])
+def create_experiment(req: CreateExperimentRequest, db: Session = Depends(get_db)):
+    from app.services.commerce_service import CommerceService
+    svc = CommerceService(db)
+    exp_id = svc.create_experiment(req.model_dump())
+    return {"experiment_id": exp_id}
+
 @api_router.post("/experiments/{experiment_id}/run", tags=["experiments"])
 def run_experiment(experiment_id: str, db: Session = Depends(get_db)):
     # Should not block indefinitely, returns status
@@ -123,7 +136,7 @@ def list_repairs(page: int = 1, size: int = 50, db: Session = Depends(get_db)):
     skip = (page - 1) * size
     items = db.query(RepairProposal).offset(skip).limit(size).all()
     total = db.query(RepairProposal).count()
-    return {"items": [{"repair_id": item.repair_id, "status": item.status} for item in items], "total": total, "page": page, "size": size}
+    return {"items": [item.__dict__ for item in items], "total": total, "page": page, "size": size}
 
 @api_router.get("/repairs/{repair_id}", tags=["repairs"])
 def get_repair(repair_id: str, db: Session = Depends(get_db)):
@@ -147,7 +160,12 @@ def list_payments(page: int = 1, size: int = 50, db: Session = Depends(get_db)):
     skip = (page - 1) * size
     items = db.query(PaymentOperation).offset(skip).limit(size).all()
     total = db.query(PaymentOperation).count()
-    return {"items": [item.__dict__ for item in items], "total": total, "page": page, "size": size}
+    res_items = []
+    for item in items:
+        d = item.__dict__.copy()
+        d["reconciled"] = (item.state == "captured")
+        res_items.append(d)
+    return {"items": res_items, "total": total, "page": page, "size": size}
 
 # --- Replay ---
 @api_router.post("/replays", tags=["replay"])

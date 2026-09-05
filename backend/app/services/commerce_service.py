@@ -112,29 +112,33 @@ class CommerceService:
         if not trace:
             return {"status": "error", "reason": "Trace not found"}
 
-        last_event = (
+        events = (
             self.db.query(TraceEvent)
             .filter(TraceEvent.trace_id == trace_id)
             .order_by(TraceEvent.event_id.desc())
-            .first()
+            .all()
         )
         reason = "UNKNOWN"
         hypothesis = "unknown"
         sku = "unknown"
-        if last_event and last_event.payload:
-            details = last_event.payload.get("details", {})
-            reason = details.get("reason", "UNKNOWN")
-            
-            # Simple heuristic for missing attributes based on reason
-            if "attribute" in reason.lower() or "missing" in reason.lower():
-                hypothesis = "missing_typed_attribute"
-            elif "stock" in reason.lower() or "inventory" in reason.lower():
-                hypothesis = "stale_inventory"
-            
-            # Try to extract SKU if available
-            skus = details.get("skus", [])
-            if skus:
-                sku = skus[0]
+        
+        # Scan backwards for the first relevant failure signal
+        for evt in events:
+            if evt.payload:
+                details = evt.payload.get("details", {})
+                if evt.event_type == "product_rejected":
+                    reason = details.get("reason", "UNKNOWN")
+                    skus = details.get("sku", [])
+                    if isinstance(skus, list) and skus:
+                        sku = skus[0]
+                    elif isinstance(skus, str):
+                        sku = skus
+                    
+                    if "attribute" in reason.lower() or "missing" in reason.lower() or "power_watts" in reason.lower():
+                        hypothesis = "missing_typed_attribute"
+                    elif "stock" in reason.lower() or "inventory" in reason.lower():
+                        hypothesis = "stale_inventory"
+                    break
 
         return {
             "status": "localized", 

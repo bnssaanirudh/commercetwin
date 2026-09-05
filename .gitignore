@@ -24,3 +24,7 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 backend/commercetwin.db
+
+.coverage*
+htmlcov/
+

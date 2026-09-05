@@ -44,6 +44,16 @@ export const fetchRepairs = async () => {
   }
 };
 
+export const createExperiment = async (payload: any) => {
+  const res = await fetch(`${API_BASE}/experiments`, { 
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error('Failed to create experiment');
+  return await res.json();
+};
+
 export const runExperiment = async (id: string, payload: any) => {
   const res = await fetch(`${API_BASE}/experiments/${id}/run`, { 
     method: 'POST',

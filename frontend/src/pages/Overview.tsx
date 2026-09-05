@@ -2,15 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { fetchMetrics } from '../api/client';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-const data = [
-  { name: 'Mon', AVaR: 4000, REV: 2400 },
-  { name: 'Tue', AVaR: 3000, REV: 1398 },
-  { name: 'Wed', AVaR: 2000, REV: 9800 },
-  { name: 'Thu', AVaR: 2780, REV: 3908 },
-  { name: 'Fri', AVaR: 1890, REV: 4800 },
-  { name: 'Sat', AVaR: 2390, REV: 3800 },
-  { name: 'Sun', AVaR: 3490, REV: 4300 },
-];
 
 const Overview: React.FC = () => {
   const [metrics, setMetrics] = useState<any>(null);
@@ -22,8 +13,22 @@ const Overview: React.FC = () => {
       .catch(err => setError(err.message));
   }, []);
 
-  if (error) return <div style={{ padding: '2rem', color: 'var(--accent-red)' }}>Error loading metrics: {error}</div>;
-  if (!metrics) return <div>Loading...</div>;
+  if (error) return (
+    <div style={{ padding: '2rem', textAlign: 'center' }}>
+      <h3 style={{ color: 'var(--accent-red)' }}>Backend unavailable</h3>
+      <p style={{ color: '#888' }}>{error}</p>
+    </div>
+  );
+  if (!metrics || Object.keys(metrics).length === 0) return (
+    <div style={{ padding: '2rem', textAlign: 'center' }}>
+      <h3 style={{ color: 'var(--accent-orange)' }}>No data</h3>
+      <p style={{ color: '#888' }}>Run an experiment to generate metrics.</p>
+    </div>
+  );
+
+  const chartData = [
+    { name: 'Current', AVaR: (metrics.Agentic_Value_at_Risk_Paise || 0) / 100, REV: (metrics.Recovered_Eligible_Value_Paise || 0) / 100 }
+  ];
 
   return (
     <div>
@@ -39,19 +44,19 @@ const Overview: React.FC = () => {
       <div className="grid-4" style={{ marginBottom: '2rem' }}>
         <div className="card">
           <div className="card-title">Robust Transaction Yield (RTY)</div>
-          <div className="card-value">{(metrics.RTY * 100).toFixed(1)}%</div>
+          <div className="card-value">{((metrics.Robust_Transaction_Yield || 0) * 100).toFixed(1)}%</div>
         </div>
         <div className="card">
           <div className="card-title">Intent Integrity (II)</div>
-          <div className="card-value">{(metrics.Intent_Integrity * 100 || 0).toFixed(1)}%</div>
+          <div className="card-value">{((metrics.Intent_Integrity || 0) * 100).toFixed(1)}%</div>
         </div>
         <div className="card">
           <div className="card-title">AVaR (Risk)</div>
-          <div className="card-value">₹{((metrics.AVaR || 0) / 100).toLocaleString()}</div>
+          <div className="card-value">₹{((metrics.Agentic_Value_at_Risk_Paise || 0) / 100).toLocaleString()}</div>
         </div>
         <div className="card">
           <div className="card-title">REV (Recovered)</div>
-          <div className="card-value">₹{((metrics.REV || 0) / 100).toLocaleString()}</div>
+          <div className="card-value">₹{((metrics.Recovered_Eligible_Value_Paise || 0) / 100).toLocaleString()}</div>
         </div>
       </div>
 
@@ -60,7 +65,7 @@ const Overview: React.FC = () => {
           <div className="card-title">Risk vs Recovered Value</div>
           <div style={{ width: '100%', height: 300 }}>
             <ResponsiveContainer>
-              <LineChart data={data}>
+              <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
@@ -78,19 +83,19 @@ const Overview: React.FC = () => {
             <tbody>
               <tr>
                 <td>Constraint Violation Rate (CVR)</td>
-                <td><span className="badge badge-success">{(metrics.CVR * 100).toFixed(1)}%</span></td>
+                <td><span className="badge badge-success">{((metrics.Constraint_Violation_Rate || 0) * 100).toFixed(1)}%</span></td>
               </tr>
               <tr>
                 <td>Failure Recovery Rate (FRR)</td>
-                <td><span className="badge badge-info">{(metrics.FRR * 100).toFixed(1)}%</span></td>
+                <td><span className="badge badge-info">{((metrics.Failure_Recovery_Rate || 0) * 100).toFixed(1)}%</span></td>
               </tr>
               <tr>
                 <td>Median Latency</td>
-                <td><span className="badge badge-warning">{metrics.latency?.median_ms ?? 120} ms</span></td>
+                <td><span className="badge badge-warning">{(metrics.Latency_Median_ms || 0).toFixed(1)} ms</span></td>
               </tr>
               <tr>
                 <td>Total LLM Calls</td>
-                <td>{metrics.llm?.total_calls ?? 42}</td>
+                <td>{metrics.Total_LLM_Calls ?? 'N/A'}</td>
               </tr>
             </tbody>
           </table>
