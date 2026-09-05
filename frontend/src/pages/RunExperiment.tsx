@@ -23,7 +23,7 @@ const RunExperiment: React.FC = () => {
         seed: seed
       });
       const data = await runExperiment(expRes.experiment_id, {
-        buyer_cohort_size: cohortSize,
+        cohort_size: cohortSize,
         seed: seed,
         intent: intent
       });

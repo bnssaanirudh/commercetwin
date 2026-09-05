@@ -78,7 +78,7 @@ def create_experiment(req: CreateExperimentRequest, db: Session = Depends(get_db
 
 
 class RunExperimentRequest(BaseModel):
-    buyer_cohort_size: int = 10
+    cohort_size: int = 10
     seed: int = 42
     intent: str | None = None
 
@@ -102,20 +102,28 @@ def run_experiment(experiment_id: str, req: RunExperimentRequest, db: Session = 
     svc = CommerceService(db)
     results = []
 
-    for i in range(req.buyer_cohort_size):
+    for i in range(req.cohort_size):
         intent_id = f"synthetic-{experiment_id}-{i}"
         user_intent = req.intent if req.intent else f"I need a product for test buyer {i}"
         
-        intent = BuyerIntentSchema(
-            intent_id=intent_id,
-            raw_intent=user_intent,
-            hard_constraints=HardConstraints(required_categories=["electronics"], min_attributes={"power_watts": 65}),
-            soft_preferences=SoftPreferences(),
-            target_budget_paise=50000,
-            max_budget_paise=50000,
-            autonomy_level="autonomous",
-            seed=req.seed + i,
-        )
+        try:
+            from app.buyers.compiler import IntentCompiler
+            compiler = IntentCompiler()
+            compiled_intent = compiler.compile(user_intent, seed=req.seed + i)
+            compiled_intent.intent_id = intent_id
+            intent = compiled_intent
+        except Exception as e:
+            # Fallback for when LLM is unavailable
+            intent = BuyerIntentSchema(
+                intent_id=intent_id,
+                raw_intent=user_intent,
+                hard_constraints=HardConstraints(required_categories=["electronics"], min_attributes={"power_watts": 65}),
+                soft_preferences=SoftPreferences(),
+                target_budget_paise=50000,
+                max_budget_paise=50000,
+                autonomy_level="autonomous",
+                seed=req.seed + i,
+            )
         p = Product(sku=f"SYNTH-{experiment_id}-{i}", merchant_id="merchant_demo", title=f"Synthetic Charger {i}", category="electronics", description=user_intent)
         p.price_paise = 10000
         db.add(p)
@@ -149,10 +157,10 @@ def run_experiment(experiment_id: str, req: RunExperimentRequest, db: Session = 
         price_db = {p.sku: 10000}
         policy_db = {"shipping_available": True, "flat_shipping_paise": 0}
         
-        chaos_engine.apply([p], inv_db, price_db, policy_db, req.seed + i, exp.chaos_profile)
-        mutated_products, mutated_inventory, mutated_pricing, mutated_policy = chaos_engine.get_state()
+        chaos_engine.apply([p], inv_db, price_db, policy_db, req.seed + i, exp.chaos_profile, attrs_map)
+        mutated_products, mutated_inventory, mutated_pricing, mutated_policy, mutated_attrs_map = chaos_engine.get_state()
         
-        agent = SemanticBuyer(intent, mutated_products, attrs_map)
+        agent = SemanticBuyer(intent, mutated_products, mutated_attrs_map)
         try:
             runner = svc.run_trace(
                 agent=agent,
@@ -161,7 +169,7 @@ def run_experiment(experiment_id: str, req: RunExperimentRequest, db: Session = 
                 merchant_policy_db=mutated_policy,
                 chaos_engine=chaos_engine,
                 experiment_id=experiment_id,
-                attributes_map=attrs_map,
+                attributes_map=mutated_attrs_map,
             )
             
             # If the trace fails and chaos was applied, we might want to automatically localize and repair
@@ -185,7 +193,7 @@ def run_experiment(experiment_id: str, req: RunExperimentRequest, db: Session = 
     return {
         "experiment_id": experiment_id,
         "status": "completed",
-        "total_buyers": req.buyer_cohort_size,
+        "total_buyers": req.cohort_size,
         "successful": successful,
         "results": results,
     }

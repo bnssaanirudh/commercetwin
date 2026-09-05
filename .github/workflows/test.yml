@@ -113,7 +113,6 @@ jobs:
 
       - name: Lint (strict — no || true)
         run: |
-          npm run lint -- --fix
           npm run lint
 
       - name: Type-check (strict — no || true)

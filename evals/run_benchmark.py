@@ -22,6 +22,7 @@ import datetime
 import hashlib
 import json
 import os
+import copy
 import random
 import subprocess
 import sys
@@ -133,10 +134,11 @@ def build_catalog_from_scenario(scenario: dict, pricing_db: dict, inventory_db: 
                 attrs = []
                 req_attrs = intent.get("hard_constraints", {}).get("required_attributes", {})
                 min_attrs = intent.get("hard_constraints", {}).get("min_attributes", {})
+                from app.models import ProductAttribute
                 for k, v in req_attrs.items():
-                    attrs.append({"key": k, "value": v, "type": type(v).__name__})
+                    attrs.append(ProductAttribute(sku=sku, key=k, value=str(v), type=type(v).__name__))
                 for k, v in min_attrs.items():
-                    attrs.append({"key": k, "value": v, "type": type(v).__name__})
+                    attrs.append(ProductAttribute(sku=sku, key=k, value=str(v), type=type(v).__name__))
                 attributes_map[sku] = attrs
 
                 if db_session:
@@ -148,13 +150,13 @@ def build_catalog_from_scenario(scenario: dict, pricing_db: dict, inventory_db: 
                         ev = CatalogAttributeEvidence(
                             evidence_id=f"EV-{uuid.uuid4().hex[:8]}",
                             sku=sku,
-                            key=attr["key"],
-                            value=str(attr["value"]),
-                            type=attr["type"],
+                            key=attr.key,
+                            value=attr.value,
+                            type=attr.type,
                             catalog_version=1,
                             source="benchmark_oracle",
                             verified_at=datetime.datetime.now(datetime.UTC),
-                            source_hash=hashlib.sha256(f"{sku}:{attr['key']}:{attr['value']}".encode()).hexdigest()
+                            source_hash=hashlib.sha256(f"{sku}:{attr.key}:{attr.value}".encode()).hexdigest()
                         )
                         db_session.add(ev)
                     db_session.flush()
@@ -240,10 +242,18 @@ def run_commercetwin(split: str, seed: int) -> dict:
 
         # Apply chaos
         chaos_engine = ChaosEngine()
-        chaos_engine.apply(products, inventory_db, pricing_db, merchant_policy, seed, config["chaos_profile"])
-        mutated_products, mutated_inventory, mutated_pricing, mutated_policy = chaos_engine.get_state()
-
-        agent = SemanticBuyer(intent_schema, mutated_products, attributes_map)
+        chaos_engine.apply(
+            copy.deepcopy(products),
+            copy.deepcopy(inventory_db),
+            copy.deepcopy(pricing_db),
+            copy.deepcopy(merchant_policy),
+            seed + i,
+            config["chaos_profile"],
+            copy.deepcopy(attributes_map)
+        )
+        mutated_products, mutated_inventory, mutated_pricing, mutated_policy, mutated_attrs_map = chaos_engine.get_state()
+        
+        agent = SemanticBuyer(intent_schema, mutated_products, mutated_attrs_map)
         final_state = "ABORTED"
         failure_reason = None
         canonical_price = intent_data["target_budget_paise"]
@@ -258,8 +268,8 @@ def run_commercetwin(split: str, seed: int) -> dict:
                 pricing_db=mutated_pricing,
                 merchant_policy_db=mutated_policy,
                 chaos_engine=chaos_engine,
-                experiment_id=experiment_id,
-                attributes_map=attributes_map,
+                experiment_id="BENCHMARK",
+                attributes_map=mutated_attrs_map,
             )
             final_state = runner.state_machine.current_state.name
 
@@ -267,6 +277,10 @@ def run_commercetwin(split: str, seed: int) -> dict:
                 if runner.state_machine.trace_events:
                     last = runner.state_machine.trace_events[-1]
                     failure_reason = last.get("payload", {}).get("details", {}).get("reason")
+                
+                print("DEBUG: ALL TRACE EVENTS:")
+                for e in agent.trace_events:
+                    print(e)
 
                 # ── REPAIR LOOP ──────────────────────────────────────────────
                 # Use the persisted trace_id (not "latest trace" heuristic)
@@ -280,12 +294,14 @@ def run_commercetwin(split: str, seed: int) -> dict:
                     localized = commerce_service.localize_failure(trace_id)
 
                     if localized.get("status") == "localized":
+                        print(f"DEBUG: Localized = {localized}")
                         is_repairable = True
                         # generate_repair now creates a real FailureCluster internally
                         repair_data = commerce_service.generate_repair(
                             trace_id=trace_id,
                             localized_cause=localized,
                         )
+                        print(f"DEBUG: Repair Data = {repair_data}")
 
                         if (
                             repair_data.get("status") != "MANUAL_REVIEW_REQUIRED"

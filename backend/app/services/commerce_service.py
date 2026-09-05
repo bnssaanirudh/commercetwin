@@ -626,13 +626,14 @@ class CommerceService:
 
         for t in traces_db:
             is_success = t.final_classification in ("COMPLETED", "READY_FOR_PAYMENT", "RECOVERED_SUCCESS")
+            duration = t.updated_at - t.created_at
             traces_data.append({
                 "eligible": True,
                 "success": is_success,
-                "intent_preserved": is_success,
+                "intent_preserved": is_success, # Only preserved if we succeed without explicitly mutating intent
                 "recovered": t.final_classification == "RECOVERED_SUCCESS",
-                "canonical_price": t.final_amount_paise or 250000,
-                "latency_ms": 150.0,
+                "canonical_price": t.final_amount_paise or 0,
+                "latency_ms": duration.total_seconds() * 1000,
             })
 
         return MetricsEngine.compute_metrics(traces_data)

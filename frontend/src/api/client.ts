@@ -74,10 +74,6 @@ export const runExperiment = async (id: string, payload: Record<string, unknown>
   return await res.json();
 };
 
-export const injectChaos = async (profileId: string) => {
-  const res = await fetch(`${API_BASE}/chaos/inject?profile_id=${profileId}`, { method: 'POST' });
-  return await res.json();
-};
 
 export const fetchPayments = async () => {
   const res = await fetch(`${API_BASE}/payments`);

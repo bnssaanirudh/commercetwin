@@ -5,8 +5,6 @@
 ## Why It Matters (Track 01 — AI Growth & Agentic Commerce)
 AI-readable does not mean AI-transactable. CommerceTwin addresses the gap between AI understanding a catalog and actually completing a checkout securely. It proves that to grow agentic commerce, merchants need automated labs to inject chaos, trace failures, and apply deterministic repairs that are mathematically verified through counterfactual replay.
 
-## Demo
-*(Placeholder for Demo Video/GIF)*
 
 ## Architecture Diagram
 ```mermaid
@@ -70,7 +68,7 @@ git clone <repo>
 cd CommerceTwin
 python -m venv venv
 source venv/bin/activate
-pip install -r backend/requirements.txt
+pip install -e ".[dev]"
 ```
 
 ## Environment Variables

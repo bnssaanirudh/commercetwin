@@ -30,17 +30,18 @@ class ChaosEngine:
         self.cloned_policy: dict[str, Any] = {}
 
     def _clone_state(self, products: list[Product], inventory: dict[str, int],
-                     pricing: dict[str, int], policy: dict[str, Any]):
+                     pricing: dict[str, int], policy: dict[str, Any], attributes_map: dict[str, list[Any]] = None):
         # Deep copy to ensure safety
         self.cloned_products = copy.deepcopy(products)
         self.cloned_inventory = copy.deepcopy(inventory)
         self.cloned_pricing = copy.deepcopy(pricing)
         self.cloned_policy = copy.deepcopy(policy)
+        self.cloned_attributes = copy.deepcopy(attributes_map) if attributes_map is not None else {}
 
     def apply(self, products: list[Product], inventory: dict[str, int],
-              pricing: dict[str, int], policy: dict[str, Any], seed: int, profile: str):
+              pricing: dict[str, int], policy: dict[str, Any], seed: int, profile: str, attributes_map: dict[str, list[Any]] = None):
         """Applies chaos mutations deterministically to a cloned state."""
-        self._clone_state(products, inventory, pricing, policy)
+        self._clone_state(products, inventory, pricing, policy, attributes_map)
         self.injections = []
         random.seed(seed)
 
@@ -58,9 +59,32 @@ class ChaosEngine:
             self.pending_injections.extend(apply_commerce_chaos(
                 self.cloned_products, self.cloned_inventory, self.cloned_pricing, self.cloned_policy, seed
             ))
-        if profile == "drop_attribute":
-            # This is handled externally by dropping from attributes_map in the caller
-            pass
+        if profile in ["drop_attribute", "all"]:
+            import uuid
+            for p in self.cloned_products:
+                if p.sku in self.cloned_attributes:
+                    attrs = self.cloned_attributes[p.sku]
+                    dropped = []
+                    kept = []
+                    for attr in attrs:
+                        if attr.key == "power_watts":
+                            dropped.append(attr)
+                        else:
+                            kept.append(attr)
+                    if dropped:
+                        self.cloned_attributes[p.sku] = kept
+                        self.injections.append(ChaosInjection(
+                            chaos_id=f"CHAOS-{uuid.uuid4().hex[:8]}",
+                            family="catalog",
+                            target=f"{p.sku}_power_watts",
+                            severity="high",
+                            seed=seed,
+                            before_state="present",
+                            mutated_state="dropped",
+                            reversible_patch={"sku": p.sku, "dropped_attrs": dropped},
+                            start_boundary="init",
+                            end_boundary="end"
+                        ))
 
     def trigger_boundary(self, boundary_name: str):
         """Applies dynamic mid-flight injections when a specific state boundary is crossed."""
@@ -97,12 +121,16 @@ class ChaosEngine:
             elif inj.family == "checkout":
                 key = inj.reversible_patch["key"]
                 self.cloned_policy[key] = inj.reversible_patch["value"]
+            elif inj.family == "catalog" and "dropped_attrs" in inj.reversible_patch:
+                sku = inj.reversible_patch["sku"]
+                if sku in self.cloned_attributes:
+                    self.cloned_attributes[sku].extend(inj.reversible_patch["dropped_attrs"])
 
         self.injections = []
 
     def get_state(self):
         """Returns the mutated clones."""
-        return self.cloned_products, self.cloned_inventory, self.cloned_pricing, self.cloned_policy
+        return self.cloned_products, self.cloned_inventory, self.cloned_pricing, self.cloned_policy, self.cloned_attributes
 
     def get_trace_metadata(self) -> list[dict[str, Any]]:
         """Format matching TraceRecorder needs"""

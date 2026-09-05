@@ -39,20 +39,18 @@ async def main():
     exp_id = svc.create_experiment({"merchant_version": "v1", "chaos_profile": "drop_attribute"})
     print(f"[+] Created Experiment: {exp_id} with chaos_profile=drop_attribute")
     
-    print_stage(2, "Simulate 100 Buyers -> Injected Fault -> Failed Traces")
+    print_stage(2, "Simulate 10 Buyers -> Injected Fault -> Failed Traces")
     
-    # 2. Run 100 buyers
-    cohort_size = 100
+    # 2. Run 10 buyers
+    cohort_size = 10
     seed_base = 42
     
-    # We will simulate 100 buyers. To speed up the demo, we will only run a subset 
-    # of the 100 traces explicitly through the runner, but represent the full 100 logically.
-    # Actually, running 100 traces takes a few seconds, which is perfectly fine for a demo.
+    # We will simulate exactly 10 buyers for the demo cohort.
     
     results = []
     failed_trace_ids = []
     
-    print(f"[*] Running {cohort_size} synthetic buyer traces with 'power_watts' requirement...")
+    print(f"[*] Running {cohort_size}-buyer demo cohort with 'power_watts' requirement...")
     
     # Insert a single real product into DB for evidence
     p = Product(sku=f"DEMO-CHG-01", merchant_id="merchant_demo", title=f"65W Fast Charger", category="electronics", description="A fast charger supporting 65W.")
@@ -90,13 +88,10 @@ async def main():
     
     chaos_engine = ChaosEngine()
     
-    for i in range(1, 11): # Demo subset of 10 for speed and console clarity
+    for i in range(1, cohort_size + 1):
         # Apply chaos per buyer so they experience different random faults
-        chaos_engine.apply([p], inv_db, price_db, policy_db, seed_base + i, "drop_attribute")
-        mutated_products, mutated_inventory, mutated_pricing, mutated_policy = chaos_engine.get_state()
-        
-        # Manually apply the attribute drop if chaos_profile is drop_attribute
-        mutated_attrs_map = {p.sku: []} # dropped power_watts
+        chaos_engine.apply([p], inv_db, price_db, policy_db, seed_base + i, "drop_attribute", attrs_map)
+        mutated_products, mutated_inventory, mutated_pricing, mutated_policy, mutated_attrs_map = chaos_engine.get_state()
         
         intent = BuyerIntentSchema(
             intent_id=f"demo-buyer-{i:03d}",
@@ -126,7 +121,7 @@ async def main():
             
         print(f"  [Trace] Buyer {i:03d}: State -> {final_state}")
     
-    print(f"... and 90 more ABORTED.")
+
     
     if not failed_trace_ids:
         print("[-] No traces failed. Demo cannot proceed.")
@@ -164,7 +159,7 @@ async def main():
         print("[-] Replay did not recover the transaction to READY_FOR_PAYMENT. Demo stops.")
         return
         
-    print_stage(5, "Razorpay Test Mode Payment -> Webhook Reconciliation")
+    print_stage(5, "Simulated Payment (Razorpay Test Mode Mock) -> Webhook Reconciliation")
     
     # We use the replayed trace for payment
     recovered_trace = db.query(TransactionTrace).filter(TransactionTrace.trace_id == rr.trace_id).first()
@@ -221,7 +216,10 @@ async def main():
             
         op_reconciled = db.query(PaymentOperation).filter(PaymentOperation.operation_id == op.operation_id).first()
         print(f"\n[+] Final Payment State: {op_reconciled.state} (Reconciled: {op_reconciled.state == 'captured'})")
-    
+        if op_reconciled.state != 'captured':
+            print("[-] Final payment state is NOT captured. Demo failed.")
+            return
+
     print("\n[SUCCESS] CommerceTwin Full Loop Demo Completed.")
 
 if __name__ == "__main__":
