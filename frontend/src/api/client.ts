@@ -78,3 +78,15 @@ export const injectChaos = async (profileId: string) => {
   const res = await fetch(`${API_BASE}/chaos/inject?profile_id=${profileId}`, { method: 'POST' });
   return await res.json();
 };
+
+export const fetchPayments = async () => {
+  const res = await fetch(`${API_BASE}/payments`);
+  if (!res.ok) throw new Error('Failed to fetch payments');
+  return await res.json();
+};
+
+export const verifyRepair = async (repairId: string) => {
+  const res = await fetch(`${API_BASE}/repairs/${repairId}/verify`, { method: 'POST' });
+  if (!res.ok) throw new Error('Failed to verify repair');
+  return await res.json();
+};

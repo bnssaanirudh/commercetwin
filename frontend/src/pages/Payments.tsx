@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { fetchPayments } from '../api/client';
 
 const Payments: React.FC = () => {
   const [payments, setPayments] = useState<any[]>([]);
@@ -6,11 +7,7 @@ const Payments: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/v1/payments')
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to fetch payments');
-        return res.json();
-      })
+    fetchPayments()
       .then(data => setPayments(data.items || []))
       .catch(err => setError(err.message));
   }, []);

@@ -23,11 +23,8 @@ const RunExperiment: React.FC = () => {
         seed: seed
       });
       const data = await runExperiment(expRes.experiment_id, {
-        intent,
-        merchant_version: merchantVersion,
-        chaos_profile: chaosProfile,
-        seed,
-        cohort_size: cohortSize
+        buyer_cohort_size: cohortSize,
+        seed: seed
       });
       setResult(data);
       setStatus('completed');
