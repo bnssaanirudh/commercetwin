@@ -1,0 +1,19 @@
+name: Natural Voice Render
+on:
+  push:
+    branches:
+      - tts-render-temp
+    paths:
+      - tools/temporary_voice_render.py
+      - .github/workflows/render_voice.yml
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install edge-tts
+      - run: python tools/temporary_voice_render.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: commercetwin-natural-indian-male
+          path: CommerceTwin_Natural_Indian_Male.mp3
