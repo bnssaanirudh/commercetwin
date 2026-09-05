@@ -234,6 +234,7 @@ class ReplayResult(Base, TimestampMixin):
     trace_id = Column(String, ForeignKey("transaction_traces.trace_id"), nullable=False)
     snapshot_id = Column(String, ForeignKey("replay_snapshots.snapshot_id"), nullable=True)
     success = Column(Boolean, nullable=False)
+    oracle_valid = Column(Boolean, nullable=True)   # True iff IntentOracle validated the replayed cart
     before_state = Column(String)   # original final_classification
     after_state = Column(String)    # post-replay final_classification
     metrics_diff = Column(JSON)

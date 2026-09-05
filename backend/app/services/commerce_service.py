@@ -387,7 +387,6 @@ class CommerceService:
         Returns True only when the replayed trace reaches READY_FOR_PAYMENT
         AND the IntentOracle validates the cart.
         """
-        from app.buyers.configurations import SemanticBuyer
         from app.buyers.oracle import IntentOracle
         from app.buyers.schemas import BuyerIntentSchema, HardConstraints, SoftPreferences
         from app.models import (
@@ -504,11 +503,13 @@ class CommerceService:
 
         final_state = replay_runner.state_machine.current_state.name
         is_success = final_state == "READY_FOR_PAYMENT"
+        oracle_valid = None
 
         if is_success:
             canonical_price = sum(pricing_db.get(p.sku, 0) for p in replay_runner.cart)
             oracle = IntentOracle(intent_schema)
             val_res = oracle.evaluate_cart(replay_runner.cart, canonical_price)
+            oracle_valid = val_res.is_valid
             is_success = val_res.is_valid
 
         replay_id = f"REP-{uuid.uuid4().hex[:8]}"
@@ -519,6 +520,7 @@ class CommerceService:
             trace_id=original_trace.trace_id,
             snapshot_id=snap.snapshot_id,
             success=is_success,
+            oracle_valid=oracle_valid,
             before_state=original_trace.final_classification,
             after_state=final_state,
             metrics_diff={
@@ -534,6 +536,7 @@ class CommerceService:
 
         return {
             "success": is_success,
+            "oracle_valid": oracle_valid,
             "replay_id": replay_id,
             "trace_id": replay_runner.trace_id,
             "final_state": final_state

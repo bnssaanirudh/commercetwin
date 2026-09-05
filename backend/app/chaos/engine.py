@@ -67,7 +67,7 @@ class ChaosEngine:
                     dropped = []
                     kept = []
                     for attr in attrs:
-                        if attr.key == "wattage":
+                        if attr.key == "power_watts":
                             dropped.append(attr)
                         else:
                             kept.append(attr)
@@ -76,7 +76,7 @@ class ChaosEngine:
                         self.injections.append(ChaosInjection(
                             chaos_id=f"CHAOS-{uuid.uuid4().hex[:8]}",
                             family="catalog",
-                            target=f"{p.sku}_wattage",
+                            target=f"{p.sku}_power_watts",
                             severity="high",
                             seed=seed,
                             before_state="present",
@@ -102,9 +102,19 @@ class ChaosEngine:
 
     def rollback(self):
         """Reverses all injections using the reversible_patch field to restore the clone to clean state."""
-        # Reverse in reverse order
+        # Reverse in reverse order. IMPORTANT: dropped_attrs branch must be checked
+        # before the generic catalog/field branch, since both share family="catalog".
         for inj in reversed(self.injections):
-            if inj.family in ["catalog", "context"]:
+            if inj.family in ["catalog", "context"] and "dropped_attrs" in inj.reversible_patch:
+                # Dropped-attribute rollback: restore attrs into cloned_attributes map
+                sku = inj.reversible_patch["sku"]
+                self.cloned_attributes.setdefault(sku, [])
+                existing_keys = {a.key for a in self.cloned_attributes[sku]}
+                for attr in inj.reversible_patch["dropped_attrs"]:
+                    if attr.key not in existing_keys:
+                        self.cloned_attributes[sku].append(attr)
+                        existing_keys.add(attr.key)
+            elif inj.family in ["catalog", "context"]:
                 idx = inj.reversible_patch.get("index", 0)
                 if "field" in inj.reversible_patch:
                     # Catalog generic rollback
@@ -121,10 +131,6 @@ class ChaosEngine:
             elif inj.family == "checkout":
                 key = inj.reversible_patch["key"]
                 self.cloned_policy[key] = inj.reversible_patch["value"]
-            elif inj.family == "catalog" and "dropped_attrs" in inj.reversible_patch:
-                sku = inj.reversible_patch["sku"]
-                if sku in self.cloned_attributes:
-                    self.cloned_attributes[sku].extend(inj.reversible_patch["dropped_attrs"])
 
         self.injections = []
 

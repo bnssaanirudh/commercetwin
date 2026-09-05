@@ -91,7 +91,6 @@ def run_experiment(experiment_id: str, req: RunExperimentRequest, db: Session = 
     Returns run results with final state summary.
     """
     from app.buyers.configurations import SemanticBuyer
-    from app.buyers.schemas import BuyerIntentSchema, HardConstraints, SoftPreferences
     from app.models import Experiment, Product
     from app.services.commerce_service import CommerceService
 

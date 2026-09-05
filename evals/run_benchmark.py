@@ -128,7 +128,7 @@ def build_catalog_from_scenario(item: dict, pricing_db: dict, inventory_db: dict
                         key=pa.key,
                         value=pa.value,
                         type=pa.type,
-                        catalog_version="v1_truth",
+                        catalog_version=1,
                         source="MERCHANT_TRUTH",
                         verified_at=datetime.datetime.now(datetime.UTC),
                         source_hash=hashlib.sha256(f"{sku}:{pa.key}:{pa.value}".encode()).hexdigest()
@@ -139,7 +139,9 @@ def build_catalog_from_scenario(item: dict, pricing_db: dict, inventory_db: dict
 
 def run_commercetwin(split: str, seed: int) -> dict:
     """Run the CommerceTwin system on a dataset split and report metrics."""
-    from app.buyers.configurations import SemanticBuyer
+    # Checkout readiness stops at READY_FOR_PAYMENT — Razorpay tested separately
+    CHECKOUT_SUCCESS_STATES = {"READY_FOR_PAYMENT", "RECOVERED_SUCCESS"}
+
     from app.buyers.oracle import IntentOracle
     from app.buyers.schemas import BuyerIntentSchema, HardConstraints, SoftPreferences
     from app.chaos.engine import ChaosEngine
@@ -225,15 +227,18 @@ def run_commercetwin(split: str, seed: int) -> dict:
             copy.deepcopy(attributes_map)
         )
         mutated_products, mutated_inventory, mutated_pricing, mutated_policy, mutated_attrs_map = chaos_engine.get_state()
-        
+
         from app.buyers.configurations import StructuredBuyer
         agent = StructuredBuyer(intent_schema, mutated_products, mutated_attrs_map)
         final_state = "ABORTED"
         failure_reason = None
         canonical_price = intent_data["target_budget_paise"]
+        runner = None
+        trace_id = None
         recovered = False
         intent_preserved = False
         is_repairable = False
+        replay_trace_id = None
 
         try:
             runner = commerce_service.run_trace(
@@ -246,59 +251,55 @@ def run_commercetwin(split: str, seed: int) -> dict:
                 attributes_map=mutated_attrs_map,
             )
             final_state = runner.state_machine.current_state.name
+            trace_id = runner.trace_id
 
             if final_state == "ABORTED":
                 if runner.state_machine.trace_events:
                     last = runner.state_machine.trace_events[-1]
                     failure_reason = last.get("payload", {}).get("details", {}).get("reason")
-                
-                for e in agent.trace_events:
-                    print(e)
 
                 # ── REPAIR LOOP ──────────────────────────────────────────────
-                # Use the persisted trace_id (not "latest trace" heuristic)
-                trace_record = (
-                    db_session.query(TransactionTrace)
-                    .order_by(TransactionTrace.created_at.desc())
-                    .first()
-                )
-                if trace_record:
-                    trace_id = trace_record.trace_id
-                    localized = commerce_service.localize_failure(trace_id)
+                # Use the persisted trace_id from this runner directly
+                localized = commerce_service.localize_failure(trace_id)
 
-                    if localized.get("status") == "localized":
-                        is_repairable = True
-                        # generate_repair now creates a real FailureCluster internally
-                        repair_data = commerce_service.generate_repair(
-                            trace_id=trace_id,
-                            localized_cause=localized,
+                if localized.get("status") == "localized":
+                    is_repairable = True
+                    repair_data = commerce_service.generate_repair(
+                        trace_id=trace_id,
+                        localized_cause=localized,
+                    )
+
+                    if (
+                        repair_data.get("status") != "MANUAL_REVIEW_REQUIRED"
+                        and "repair_id" in repair_data
+                    ):
+                        repair_id = repair_data["repair_id"]
+                        verification = commerce_service.verify_repair(repair_id)
+
+                        # Gate recovery on persisted ReplayResult.success only
+                        result_row = (
+                            db_session.query(ReplayResult)
+                            .filter(ReplayResult.repair_id == repair_id)
+                            .order_by(ReplayResult.created_at.desc())
+                            .first()
                         )
-                        
-                        if (
-                            repair_data.get("status") != "MANUAL_REVIEW_REQUIRED"
-                            and "repair_id" in repair_data
-                        ):
-                            repair_id = repair_data["repair_id"]
-                            commerce_service.verify_repair(repair_id)
+                        if result_row and result_row.success:
+                            recovered = True
+                            final_state = "RECOVERED_SUCCESS"
+                            # replay trace ID comes from verification return value
+                            replay_trace_id = verification.get("trace_id") if isinstance(verification, dict) else None
+                            # Use oracle_valid from ReplayResult if available
+                            oracle_valid = getattr(result_row, "oracle_valid", None)
+                            if oracle_valid is not None:
+                                intent_preserved = oracle_valid
+                            elif result_row.after_state == "READY_FOR_PAYMENT":
+                                # Infer: replay succeeded and oracle was checked in verify_repair
+                                intent_preserved = True
 
-                            # Gate recovery on persisted ReplayResult.success only
-                            result_row = (
-                                db_session.query(ReplayResult)
-                                .filter(ReplayResult.repair_id == repair_id)
-                                .order_by(ReplayResult.created_at.desc())
-                                .first()
-                            )
-                            if result_row and result_row.success:
-                                recovered = True
-                                final_state = "RECOVERED_SUCCESS"
+            is_success = final_state in CHECKOUT_SUCCESS_STATES
 
-            if runner.cart:
-                canonical_price = sum(mutated_pricing.get(p.sku, 0) for p in runner.cart)
-
-            is_success = final_state in ("PAYMENT_PENDING", "COMPLETED", "RECOVERED_SUCCESS")
-
-            # Use Oracle to check Intent Integrity
-            if is_success:
+            # Use Oracle to check Intent Integrity for non-recovered successes
+            if is_success and not recovered and runner and runner.cart:
                 oracle_validator = IntentOracle(intent_schema)
                 val_res = oracle_validator.evaluate_cart(runner.cart, canonical_price)
                 intent_preserved = val_res.is_valid
@@ -309,13 +310,16 @@ def run_commercetwin(split: str, seed: int) -> dict:
         finally:
             db_session.close()
 
+        if runner and runner.cart:
+            canonical_price = sum(mutated_pricing.get(p.sku, 0) for p in runner.cart)
+
         latency_ms = (time.time() - start_time) * 1000.0
-        is_success = final_state in ("PAYMENT_PENDING", "COMPLETED", "RECOVERED_SUCCESS")
+        is_success = final_state in CHECKOUT_SUCCESS_STATES
 
         trace = {
-            "trace_id": runner.trace_id,
-            "original_trace_id": trace_id if recovered else runner.trace_id,
-            "replay_trace_id": runner.trace_id if recovered else None,
+            "trace_id": runner.trace_id if runner else f"ERR-{i}",
+            "original_trace_id": trace_id if trace_id else f"ERR-{i}",
+            "replay_trace_id": replay_trace_id,
             "buyer_id": intent_id,
             "scenario_id": f"scn_{i}",
             "seed": seed,
