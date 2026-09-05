@@ -33,27 +33,76 @@ async def create_payment_order(req: OrderCreateRequest, db: Session = Depends(ge
     try:
         trace_id = req.trace_id
 
-        # Authoritative amount from DB (mock: 2500 paise = ₹25 for demo)
-        # In production: query TransactionTrace → cart → sum canonical prices
-        calculated_amount_paise = 2500
-
-        fingerprint_data = f"{trace_id}||v1||{calculated_amount_paise}||merchant_1"
+        # Look up trace and check final state
+        from app.models import TransactionTrace, TraceEvent, PricingSnapshot, PaymentOperation
+        
+        trace = db.query(TransactionTrace).filter(TransactionTrace.trace_id == trace_id).first()
+        if not trace:
+            raise HTTPException(status_code=404, detail="Trace not found")
+            
+        if trace.final_classification != "READY_FOR_PAYMENT":
+            raise ValueError("Trace is not in READY_FOR_PAYMENT state")
+            
+        # Extract cart from TraceEvent
+        cart_event = db.query(TraceEvent).filter(
+            TraceEvent.trace_id == trace_id,
+            TraceEvent.event_type == "CART_CREATED"
+        ).order_by(TraceEvent.event_id.desc()).first()
+        
+        if not cart_event:
+            raise ValueError("No CART_CREATED event found for trace")
+            
+        skus = cart_event.payload.get("details", {}).get("skus", [])
+        if not skus:
+            raise ValueError("Cart is empty")
+            
+        # Get canonical pricing from PricingSnapshot
+        calculated_amount_paise = 0
+        for sku in skus:
+            price = db.query(PricingSnapshot).filter(PricingSnapshot.sku == sku).order_by(PricingSnapshot.created_at.desc()).first()
+            if price:
+                calculated_amount_paise += price.price_paise
+            else:
+                raise ValueError(f"Pricing not found for {sku}")
+                
+        # Generate Idempotent Fingerprint
+        # In a real setup, we might also hash the cart skus or versions
+        cart_hash = hashlib.sha256(",".join(sorted(skus)).encode()).hexdigest()
+        merchant_id = "merchant_1" # mock
+        fingerprint_data = f"{merchant_id}||{trace_id}||{cart_hash}||{calculated_amount_paise}||INR"
         fingerprint = hashlib.sha256(fingerprint_data.encode()).hexdigest()
 
-        operation_id = str(uuid.uuid4())
-
-        # Persist BEFORE network call to avoid lost state on crash
-        from app.models import PaymentOperation
-        op = PaymentOperation(
-            operation_id=operation_id,
-            trace_id=trace_id,
-            amount_paise=calculated_amount_paise,
-            state="created",
-            # We don't have order_id yet
-        )
-        db.add(op)
-        db.commit()
-        db.refresh(op)
+        # Check for existing PaymentOperation
+        existing_op = db.query(PaymentOperation).filter(
+            PaymentOperation.payment_operation_fingerprint == fingerprint
+        ).first()
+        
+        if existing_op:
+            if existing_op.razorpay_order_id:
+                return {
+                    "order_id": existing_op.razorpay_order_id,
+                    "amount": existing_op.amount_paise,
+                    "currency": existing_op.currency,
+                    "key_id": settings.razorpay_key_id,
+                    "operation_id": existing_op.operation_id,
+                    "fingerprint": existing_op.payment_operation_fingerprint,
+                }
+            # If it exists but no order id, it might be stuck in creation, we'll just continue and retry creation
+            operation_id = existing_op.operation_id
+            op = existing_op
+        else:
+            operation_id = str(uuid.uuid4())
+            op = PaymentOperation(
+                operation_id=operation_id,
+                trace_id=trace_id,
+                amount_paise=calculated_amount_paise,
+                state="created",
+                payment_operation_fingerprint=fingerprint,
+                # We don't have order_id yet
+            )
+            db.add(op)
+            db.commit()
+            db.refresh(op)
 
         order = razorpay_service.create_order(
             amount_paise=calculated_amount_paise,
@@ -94,11 +143,31 @@ async def verify_payment(req: PaymentVerifyRequest):
 
 
 @router.get("/order/{order_id}/reconcile")
-async def reconcile_order(order_id: str):
+async def reconcile_order(order_id: str, db: Session = Depends(get_db)):
     """Fetches the remote order state for reconciliation after ambiguous timeout."""
+    from app.models import PaymentOperation
     try:
         order = razorpay_service.fetch_order(order_id)
-        return {"status": order.get("status"), "amount_paid": order.get("amount_paid")}
+        
+        # Verify against PaymentOperation
+        op = db.query(PaymentOperation).filter(PaymentOperation.razorpay_order_id == order_id).first()
+        if not op:
+            raise HTTPException(status_code=404, detail="Order not found in database")
+            
+        status = order.get("status")
+        amount_paid = order.get("amount_paid")
+        
+        # Semantic check: Razorpay order exists != Payment Succeeded
+        # Must be matching amount and appropriate state
+        if status in ("paid", "captured", "authorized"):
+            if amount_paid == op.amount_paise:
+                op.state = status
+                db.commit()
+                return {"status": status, "amount_paid": amount_paid, "reconciled": True}
+            else:
+                return {"status": status, "amount_paid": amount_paid, "reconciled": False, "reason": "Amount mismatch"}
+                
+        return {"status": status, "amount_paid": amount_paid, "reconciled": False}
     except RazorpayClientError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 

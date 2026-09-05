@@ -56,10 +56,15 @@ class RepairSynthesizer:
         if localized_cause and localized_cause.get("hypothesis") == "missing_typed_attribute":
             repair_type = "CATALOG_SCHEMA_PATCH"
             sku = localized_cause.get("sku", "unknown")
-            # We must stop inferring product facts from the buyer's intent.
-            # Realism dictates that a merchant cannot just invent product attributes
-            # simply because a buyer requested them.
-            return {"status": "MANUAL_REVIEW_REQUIRED", "reason": f"Factual value for missing attribute on {sku} not found. Must be verified externally."}
+            
+            # Check if we have catalog evidence
+            has_evidence = any(e.get("found") for e in evidence if e.get("type") == "catalog_schema")
+            
+            if not has_evidence:
+                # We must stop inferring product facts from the buyer's intent.
+                # Realism dictates that a merchant cannot just invent product attributes
+                # simply because a buyer requested them.
+                return {"status": "MANUAL_REVIEW_REQUIRED", "reason": f"Factual value for missing attribute on {sku} not found. Must be verified externally."}
 
         # --- Guardrail 1: Repair type must be supported ---
         if repair_type not in ALLOWED_REPAIR_TYPES:

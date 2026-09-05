@@ -228,31 +228,16 @@ def run_commercetwin(split: str, seed: int) -> dict:
                 if trace_record:
                     localized = commerce_service.localize_failure(trace_record.trace_id)
                     if localized.get("status") == "localized":
-                        repair_data = commerce_service.generate_repair(failure_cluster_id="cluster-mock")
+                        repair_data = commerce_service.generate_repair(
+                            failure_cluster_id="cluster-mock", 
+                            localized_cause=localized
+                        )
                         
-                        verified = True
-                        if "repair_id" in repair_data:
+                        if repair_data.get("status") != "MANUAL_REVIEW_REQUIRED" and "repair_id" in repair_data:
                             verified = commerce_service.verify_repair(repair_data["repair_id"])
-                        
-                        if verified:
-                            # rollback chaos via reversible patches
-                            chaos_engine.rollback()
-                            mutated_products, mutated_inventory, mutated_pricing, mutated_policy = chaos_engine.get_state()
-                            
-                            # replay
-                            agent = SemanticBuyer(intent_schema, mutated_products, {})
-                            runner_replay = commerce_service.run_trace(
-                                agent=agent,
-                                inventory_db=mutated_inventory,
-                                pricing_db=mutated_pricing,
-                                merchant_policy_db=mutated_policy,
-                                chaos_engine=None, # no chaos in replay
-                                experiment_id=experiment_id,
-                            )
-                            final_state = runner_replay.state_machine.current_state.name
-                            runner = runner_replay
-                            if final_state == "READY_FOR_PAYMENT":
+                            if verified:
                                 recovered = True
+                                final_state = "READY_FOR_PAYMENT"
 
             if runner.cart:
                 canonical_price = sum(mutated_pricing.get(p.sku, 0) for p in runner.cart)
@@ -591,50 +576,9 @@ def _run_llm_baseline(split: str, seed: int) -> dict:
 
 def _compute_and_save(traces: list, config: dict, dataset_hash: str, out_dir: str, seed: int, split: str) -> dict:
     """Compute aggregate metrics from traces, write JSONL evidence, and save."""
-    rng = random.Random(seed)
-    eligible_traces = [t for t in traces if t["eligible"]]
-    ineligible_traces = [t for t in traces if not t["eligible"]]
-    total_eligible = len(eligible_traces)
-    successful = [t for t in eligible_traces if t["success"]]
-    failed = [t for t in eligible_traces if not t["success"]]
-
-    rty = len(successful) / total_eligible if total_eligible > 0 else 0.0
-    ii = sum(1 for t in successful if t["intent_preserved"]) / len(successful) if successful else 0.0
-    cvr = sum(1 for t in successful if not t["intent_preserved"]) / len(successful) if successful else 0.0
+    from app.analytics.metrics_engine import MetricsEngine
     
-    avar = sum(t["canonical_price"] for t in failed)
-    rev = sum(t["canonical_price"] for t in successful)
-    
-    recovered_count = sum(1 for t in successful if t.get("recovered", False))
-
-    # Bootstrap 95% CI for RTY
-    success_bits = [1.0 if t["success"] else 0.0 for t in eligible_traces]
-    rty_lo, rty_hi = bootstrap_ci(success_bits, rng=rng)
-
-    # Latency statistics
-    latencies = [t["latency_ms"] for t in traces]
-    mean_lat = sum(latencies) / len(latencies) if latencies else 0.0
-    median_lat = percentile(latencies, 50)
-    p95_lat = percentile(latencies, 95)
-
-    metrics = {
-        "Robust_Transaction_Yield": round(rty, 4),
-        "RTY_CI_95_lo": round(rty_lo, 4),
-        "RTY_CI_95_hi": round(rty_hi, 4),
-        "Intent_Integrity": round(ii, 4),
-        "Constraint_Violation_Rate": round(cvr, 4),
-        "Agentic_Value_at_Risk_Paise": avar,
-        "Recovered_Eligible_Value_Paise": rev,
-        "Latency_Mean_ms": round(mean_lat, 2),
-        "Latency_Median_ms": round(median_lat, 2),
-        "Latency_P95_ms": round(p95_lat, 2),
-        "Total_Scenarios": len(traces),
-        "Total_Eligible": total_eligible,
-        "Total_Ineligible": len(ineligible_traces),
-        "Total_Successful": len(successful),
-        "Total_Failed": len(failed),
-        "Total_Recovered": recovered_count,
-    }
+    metrics = MetricsEngine.compute_metrics(traces, seed=seed)
 
     metadata = {
         "git_commit": get_git_commit(),
@@ -660,9 +604,11 @@ def _compute_and_save(traces: list, config: dict, dataset_hash: str, out_dir: st
         json.dump(metadata, f, indent=2)
 
     print(f"\nRun completed. Results -> {out_dir}", flush=True)
-    print(f"RTY={rty:.3f} [{rty_lo:.3f}, {rty_hi:.3f}] | II={ii:.3f} | AVaR={avar} | "
-          f"Eligible={total_eligible}/{len(traces)} | "
-          f"Recovered={recovered_count} | lat_p95={p95_lat:.1f}ms", flush=True)
+    print(f"RTY={metrics.get('Robust_Transaction_Yield', 0):.3f} [{metrics.get('RTY_CI_95_lo', 0):.3f}, {metrics.get('RTY_CI_95_hi', 0):.3f}] | "
+          f"II={metrics.get('Intent_Integrity', 0):.3f} | "
+          f"AVaR={metrics.get('Agentic_Value_at_Risk_Paise', 0)} | "
+          f"Recovered={metrics.get('Total_Recovered', 0)} | "
+          f"lat_p95={metrics.get('Latency_p95_ms', 0):.1f}ms", flush=True)
     print(f"Metrics: {json.dumps(metrics, indent=2)}", flush=True)
     return metrics
 

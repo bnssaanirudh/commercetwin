@@ -53,7 +53,7 @@ def list_experiments(page: int = 1, size: int = 50, db: Session = Depends(get_db
     skip = (page - 1) * size
     items = db.query(Experiment).offset(skip).limit(size).all()
     total = db.query(Experiment).count()
-    return {"items": [{"id": item.id, "experiment_id": item.experiment_id} for item in items], "total": total, "page": page, "size": size}
+    return {"items": [{"id": item.experiment_id, "experiment_id": item.experiment_id} for item in items], "total": total, "page": page, "size": size}
 
 @api_router.post("/experiments/{experiment_id}/run", tags=["experiments"])
 def run_experiment(experiment_id: str, db: Session = Depends(get_db)):
@@ -151,18 +151,29 @@ def list_payments(page: int = 1, size: int = 50, db: Session = Depends(get_db)):
 
 # --- Replay ---
 @api_router.post("/replays", tags=["replay"])
-def create_replay(db: Session = Depends(get_db)):
-    # Replay all pending verifications or cohorts (mocked for async job)
-    return {"replay_id": "rep_456", "status": "running"}
+def create_replay(repair_id: str, db: Session = Depends(get_db)):
+    from app.services.commerce_service import CommerceService
+    svc = CommerceService(db)
+    success = svc.verify_repair(repair_id)
+    return {"replay_id": f"rep_{repair_id}", "status": "completed" if success else "failed"}
 
 @api_router.get("/replays/{id}", tags=["replay"])
 def get_replay(id: str, db: Session = Depends(get_db)):
-    return {"replay_id": id, "status": "completed"}
+    from app.models import ReplayResult
+    item = db.query(ReplayResult).filter(ReplayResult.replay_id == id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Replay not found")
+    return {"replay_id": item.replay_id, "status": "completed" if item.success else "failed"}
 
 @api_router.post("/replay/cohort", tags=["replay"])
 def replay_cohort(cohort_id: str, repair_id: str | None = None, db: Session = Depends(get_db)):
-    # This would kick off a celery task in reality
-    return {"cohort_id": cohort_id, "status": "replaying"}
+    from app.services.commerce_service import CommerceService
+    svc = CommerceService(db)
+    if repair_id:
+        success = svc.verify_repair(repair_id)
+    else:
+        success = False
+    return {"cohort_id": cohort_id, "status": "completed", "success": success}
 
 # --- Metrics ---
 @api_router.get("/metrics", tags=["metrics"])
