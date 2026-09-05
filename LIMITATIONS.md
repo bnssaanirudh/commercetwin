@@ -1,10 +1,10 @@
 # Limitations
 
-CommerceTwin is built as a robust Minimum Viable Product (MVP) for the Razorpay Buildathon. In the spirit of engineering honesty, the following are explicitly stated limitations:
+CommerceTwin is built as an engineering prototype for agentic commerce reliability. In the spirit of rigorous engineering transparency, the following limitations are explicitly documented:
 
-1. **Synthetic Results**: All metrics, products, and intents are synthetic or run entirely in Razorpay Test Mode.
-2. **No Proven Production Revenue Uplift**: The ~45% RTY improvement is theoretical and mathematically proven *within the bounds of the simulation*. It has not been deployed to live fractional traffic to prove a real-world revenue increase.
-3. **Limited Merchant Vertical**: The dataset is strictly scoped to electronics and productivity accessories.
-4. **Limited Buyer-Model Matrix**: The evaluation assumes our `SemanticBuyer` and `StructuredBuyer` configurations. It does not deeply evaluate latency or token costs for third-party foundation models.
-5. **Restricted Failure Taxonomy**: The counterfactual diagnosis is supported only for implemented failure classes (e.g., `MISSING_TYPED_ATTRIBUTE`, `PRICE_MISMATCH`). Unknown failures are grouped as `UNKNOWN_ERROR`.
-6. **No Claim of Universal Protocol Compliance**: We do not claim this implements a full universal agentic protocol, rather it proves the necessity of the *closed loop* (Trace -> Localize -> Repair -> Verify).
+1. **Synthetic Evaluation**: All benchmark metrics, products, and intents are synthetic; the reported metrics do not demonstrate real-world revenue uplift.
+2. **Evaluation Scope**: The 100-scenario benchmark measures checkout readiness up to `READY_FOR_PAYMENT`; it does not execute a Razorpay transaction for every benchmark scenario. Razorpay Test Mode is tested as a separate payment-integration pathway.
+3. **No Automatic Recovery in Held-Out Benchmark**: The held-out benchmark produced **0 automatic recoveries** (FRR = 0.000, REV = ₹0). Recovery capability is instead demonstrated through a controlled deterministic regression scenario where authoritative same-SKU evidence is available.
+4. **Bounded Failure Taxonomy & Repair Class**: Automatic repair currently supports a bounded set of failure classes (such as `MISSING_TYPED_ATTRIBUTE`) and requires authoritative same-SKU evidence. If trustworthy evidence is unavailable, the system safely falls back to manual review rather than hallucinating fixes.
+5. **Razorpay Test Mode**: The payment integration operates against Razorpay Test Mode and serves as an engineering demonstration of server-authoritative gating and idempotency, not as a production payment-processing guarantee.
+6. **Payment Reconciliation & Concurrency**: Production-grade ambiguous payment reconciliation (e.g. handling network timeouts during remote order capture), distributed concurrency handling, and live merchant system adapters remain future hardening.
