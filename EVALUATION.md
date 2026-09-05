@@ -45,9 +45,9 @@ python evals/run_benchmark.py --system commercetwin --split held_out --seed 42
 
 | System | RTY (95% CI) | II | CVR | FRR | AVaR | Latency (p95) |
 |---|---|---|---|---|---|---|
-| CommerceTwin | 0.930 [0.880, 0.980] | 0.914 | 0.086 | 0.000 | ₹38,716.88 | 89.01ms |
+| CommerceTwin | 0.930 [0.880, 0.980] | 1.000 | 0.000 | 0.000 | ₹38,716.88 | 747.0ms |
 
-**Commit SHA:** `070d5a35437ea9138fe876d6c452f3d4b2615bfb`
+**Commit SHA:** `f74499beac7841ed9eda8b8b5bd14fb5e4e4b19e`
 
 ## Limitations
 - This is a synthetic benchmark and does not represent real-world live traffic.
