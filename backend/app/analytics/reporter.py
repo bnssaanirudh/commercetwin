@@ -1,18 +1,18 @@
-import json
 import csv
 import io
-from typing import Dict, Any
+import json
+from typing import Any
 
 
 class MetricsReporter:
     """Exports computed metrics to JSON, CSV, and Markdown."""
 
     @staticmethod
-    def to_json(metrics: Dict[str, Any], indent: int = 2) -> str:
+    def to_json(metrics: dict[str, Any], indent: int = 2) -> str:
         return json.dumps(metrics, indent=indent)
 
     @staticmethod
-    def to_csv(metrics: Dict[str, Any]) -> str:
+    def to_csv(metrics: dict[str, Any]) -> str:
         rows = []
         # Flatten top-level scalar metrics
         for key, val in metrics.items():
@@ -29,13 +29,13 @@ class MetricsReporter:
         return buf.getvalue()
 
     @staticmethod
-    def to_markdown(metrics: Dict[str, Any]) -> str:
+    def to_markdown(metrics: dict[str, Any]) -> str:
         lines = ["# CommerceTwin Metrics Report\n"]
         note = metrics.get("note", "")
         if note:
             lines.append(f"> **{note}**\n")
 
-        def _render(d: Dict, prefix: str = ""):
+        def _render(d: dict, prefix: str = ""):
             for k, v in d.items():
                 if k == "note":
                     continue

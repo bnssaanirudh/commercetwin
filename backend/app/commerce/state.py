@@ -1,5 +1,6 @@
 import enum
-from typing import List, Dict, Any
+from typing import Any, ClassVar
+
 
 class CommerceState(enum.Enum):
     INTENT_RECEIVED = "INTENT_RECEIVED"
@@ -19,12 +20,14 @@ class CommerceState(enum.Enum):
     COMPLETED = "COMPLETED"
     ABORTED = "ABORTED"
 
+
 class InvalidStateTransitionError(Exception):
     pass
 
+
 class CommerceStateMachine:
-    # Define valid transitions
-    VALID_TRANSITIONS = {
+    # ClassVar annotation prevents RUF012 mutable default warning
+    VALID_TRANSITIONS: ClassVar[dict[CommerceState, list[CommerceState]]] = {
         CommerceState.INTENT_RECEIVED: [CommerceState.DISCOVERY, CommerceState.ABORTED],
         CommerceState.DISCOVERY: [CommerceState.EVALUATION, CommerceState.ABORTED],
         CommerceState.EVALUATION: [CommerceState.SELECTION, CommerceState.ABORTED],
@@ -40,23 +43,25 @@ class CommerceStateMachine:
         CommerceState.RECONCILIATION_REQUIRED: [CommerceState.RECOVERED_SUCCESS, CommerceState.ABORTED],
         CommerceState.RECOVERED_SUCCESS: [CommerceState.COMPLETED],
         CommerceState.COMPLETED: [],
-        CommerceState.ABORTED: []
+        CommerceState.ABORTED: [],
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.current_state = CommerceState.INTENT_RECEIVED
-        self.trace_events: List[Dict[str, Any]] = []
+        self.trace_events: list[dict[str, Any]] = []
         self._record_trace("STATE_ENTERED", {"state": self.current_state.value})
 
-    def _record_trace(self, event_type: str, payload: dict):
+    def _record_trace(self, event_type: str, payload: dict) -> None:
         self.trace_events.append({
             "event_type": event_type,
-            "payload": payload
+            "payload": payload,
         })
 
-    def transition_to(self, new_state: CommerceState, payload: dict = None):
+    def transition_to(self, new_state: CommerceState, payload: dict | None = None) -> None:
         if new_state not in self.VALID_TRANSITIONS.get(self.current_state, []):
-            raise InvalidStateTransitionError(f"Cannot transition from {self.current_state.value} to {new_state.value}")
-        
+            raise InvalidStateTransitionError(
+                f"Cannot transition from {self.current_state.value} to {new_state.value}"
+            )
+
         self.current_state = new_state
         self._record_trace("STATE_ENTERED", {"state": self.current_state.value, "details": payload or {}})

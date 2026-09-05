@@ -1,18 +1,20 @@
 import random
-from typing import List, Dict, Any
-from app.models import Product
-from app.chaos.engine import ChaosInjection
+from typing import Any
 
-def apply_commerce_chaos(products: List[Product], inventory: Dict[str, int], 
-                         pricing: Dict[str, int], policy: Dict[str, Any], seed: int) -> List[ChaosInjection]:
+from app.chaos.engine import ChaosInjection
+from app.models import Product
+
+
+def apply_commerce_chaos(products: list[Product], inventory: dict[str, int],
+                         pricing: dict[str, int], policy: dict[str, Any], seed: int) -> list[ChaosInjection]:
     random.seed(seed + 2)
     injections = []
-    
+
     if not products:
         return injections
-        
+
     skus = [p.sku for p in products]
-    
+
     # 1. INVENTORY: Sells out after discovery
     target_inv = random.choice(skus)
     before_inv = inventory.get(target_inv, 0)
@@ -44,11 +46,11 @@ def apply_commerce_chaos(products: List[Product], inventory: Dict[str, int],
         before_state={"price_paise": before_price},
         mutated_state={"price_paise": new_price},
         reversible_patch={"sku": target_price, "price_paise": before_price},
-        start_boundary="READY_FOR_PAYMENT", 
+        start_boundary="READY_FOR_PAYMENT",
         end_boundary="COMPLETED"
     )
     injections.append(inj)
-    
+
     # 3. CHECKOUT: Shipping unavailable
     before_shipping = policy.get("shipping_available", True)
     inj = ChaosInjection(
@@ -80,7 +82,7 @@ def apply_commerce_chaos(products: List[Product], inventory: Dict[str, int],
         end_boundary="COMPLETED"
     )
     injections.append(inj)
-    
+
     # We don't apply these instantly in the engine initialization for commerce chaos;
-    # they are scheduled and triggered dynamically by boundaries. 
+    # they are scheduled and triggered dynamically by boundaries.
     return injections

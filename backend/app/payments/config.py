@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
 class PaymentSettings(BaseSettings):
     razorpay_key_id: str = "rzp_test_dummy"
     razorpay_key_secret: str = "dummy_secret"

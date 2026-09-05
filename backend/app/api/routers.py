@@ -1,7 +1,9 @@
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
-from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
 from app.db import get_db
 
 # Assuming app.models and app.schemas are well-defined
@@ -11,7 +13,7 @@ api_router = APIRouter(prefix="/api/v1")
 
 # Dummy Pydantic schemas for the endpoints (In a real app, these would come from app.schemas)
 class PaginatedResponse(BaseModel):
-    items: List[Dict[str, Any]]
+    items: list[dict[str, Any]]
     total: int
     page: int
     size: int
@@ -52,7 +54,7 @@ def list_experiments(page: int = 1, size: int = 50, db: Session = Depends(get_db
     items = db.query(Experiment).offset(skip).limit(size).all()
     total = db.query(Experiment).count()
     return {"items": [{"id": item.id, "experiment_id": item.experiment_id} for item in items], "total": total, "page": page, "size": size}
-    
+
 @api_router.post("/experiments/{experiment_id}/run", tags=["experiments"])
 def run_experiment(experiment_id: str, db: Session = Depends(get_db)):
     # Should not block indefinitely, returns status
@@ -81,7 +83,7 @@ def list_traces(page: int = 1, size: int = 50, db: Session = Depends(get_db)):
 
 @api_router.get("/traces/{trace_id}", tags=["traces"])
 def get_trace(trace_id: str, db: Session = Depends(get_db)):
-    from app.models import TransactionTrace, TraceEvent
+    from app.models import TraceEvent, TransactionTrace
     trace = db.query(TransactionTrace).filter(TransactionTrace.trace_id == trace_id).first()
     if not trace:
         raise HTTPException(status_code=404, detail="Trace not found")
@@ -152,18 +154,12 @@ def get_replay(id: str, db: Session = Depends(get_db)):
     return {"replay_id": id, "status": "completed"}
 
 @api_router.post("/replay/cohort", tags=["replay"])
-def replay_cohort(cohort_id: str, repair_id: Optional[str] = None, db: Session = Depends(get_db)):
+def replay_cohort(cohort_id: str, repair_id: str | None = None, db: Session = Depends(get_db)):
     return {"cohort_id": cohort_id, "status": "replaying"}
 
 # --- Metrics ---
 @api_router.get("/metrics", tags=["metrics"])
 def get_metrics(db: Session = Depends(get_db)):
-    return {
-        "RTY": 0.0,
-        "Intent_Integrity": 0.0,
-        "AVaR": 0,
-        "REV": 0,
-        "CVR": 0.0,
-        "RVR": 0.0,
-        "FRR": 0.0
-    }
+    from app.services.commerce_service import CommerceService
+    svc = CommerceService(db)
+    return svc.get_aggregate_metrics()

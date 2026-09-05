@@ -1,8 +1,8 @@
 import abc
-import json
 import time
-from typing import Optional, Dict, Any
+
 from pydantic import BaseModel
+
 
 class ModelResponse(BaseModel):
     raw_content: str
@@ -12,7 +12,7 @@ class ModelResponse(BaseModel):
 
 class BaseModelAdapter(abc.ABC):
     @abc.abstractmethod
-    def generate(self, prompt: str, system_prompt: Optional[str] = None) -> ModelResponse:
+    def generate(self, prompt: str, system_prompt: str | None = None) -> ModelResponse:
         pass
 
 class FakeModelAdapter(BaseModelAdapter):
@@ -21,16 +21,16 @@ class FakeModelAdapter(BaseModelAdapter):
     Uses a predefined mapping of prompt snippets to JSON responses.
     """
     def __init__(self):
-        self.responses: Dict[str, str] = {}
+        self.responses: dict[str, str] = {}
         self.should_timeout = False
         self.timeout_latency_ms = 5000
 
     def add_response(self, trigger_text: str, json_response: str):
         self.responses[trigger_text] = json_response
 
-    def generate(self, prompt: str, system_prompt: Optional[str] = None) -> ModelResponse:
+    def generate(self, prompt: str, system_prompt: str | None = None) -> ModelResponse:
         start = time.time()
-        
+
         if self.should_timeout:
             # Simulate timeout
             time.sleep(self.timeout_latency_ms / 1000.0)
@@ -41,10 +41,10 @@ class FakeModelAdapter(BaseModelAdapter):
             if trigger in prompt:
                 response_text = response
                 break
-                
+
         # Simulate small latency
         latency_ms = int((time.time() - start) * 1000) + 10
-        
+
         return ModelResponse(
             raw_content=response_text,
             prompt_tokens=len(prompt) // 4,

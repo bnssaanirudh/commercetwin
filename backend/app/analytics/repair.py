@@ -1,16 +1,24 @@
 import uuid
-from typing import Optional
+
 from sqlalchemy.orm import Session
-from app.models import RepairProposal, FailureCluster
+
+from app.models import RepairProposal
 
 # --- Guardrail constants ---
 ALLOWED_REPAIR_TYPES = {"CATALOG_SCHEMA_PATCH", "MERCHANT_CONFIG_PATCH", "TRANSACTION_RELIABILITY_PATCH"}
 
-BLOCKED_PATCH_KEYS = {"buyer_constraints", "invent_fact"}
+BLOCKED_PATCH_KEYS = {
+    "buyer_constraints",
+    "invent_fact",
+    "payment_amount",
+    "payment_credentials",
+    "financial_policy",
+    "price_floor",
+    "price_ceiling",
+}
 
 class RepairGuardrailViolation(Exception):
     """Raised when a proposed repair violates a safety policy."""
-    pass
 
 
 class RepairSynthesizer:
@@ -19,43 +27,43 @@ class RepairSynthesizer:
     All repairs are sandbox-only and subject to strict guardrails.
     """
 
-    def __init__(self, db: Optional[Session] = None):
+    def __init__(self, db: Session | None = None):
         self.db = db
 
     def synthesize(
         self,
         failure_cluster: dict,
-        repair_type: str = None,
-        proposed_patch: dict = None,
-        evidence: list = None,
-        expected_affected_traces: list = None,
+        repair_type: str | None = None,
+        proposed_patch: dict | None = None,
+        evidence: list | None = None,
+        expected_affected_traces: list | None = None,
         estimated_impact_paise: int = 0,
         repair_cost_paise: int = 0,
         safety_notes: str = "",
         verification_plan: str = "",
         confidence: int = 50,
-        localized_cause: dict = None,
+        localized_cause: dict | None = None,
     ) -> dict:
         """
         Returns a validated RepairProposal dict (and optionally persists to DB).
         Raises RepairGuardrailViolation for any policy breach.
         """
-        
+
         evidence = evidence or []
         expected_affected_traces = expected_affected_traces or []
-        
+
         # Auto-generation for MISSING_TYPED_ATTRIBUTE
         if localized_cause and localized_cause.get("hypothesis") == "missing_typed_attribute":
             repair_type = "CATALOG_SCHEMA_PATCH"
             sku = localized_cause.get("sku")
             attr = localized_cause.get("intervention", "").split("'")[1] if "'" in localized_cause.get("intervention", "") else "unknown"
-            
+
             # Attempt to extract the value from the intervention string
             import re
             match = re.search(r"restore missing attributes \{.*?:\s*'([^']+)'\}", localized_cause.get("intervention", ""))
             if not match:
                 match = re.search(r"restore missing attributes \{.*?:\s*([^}]+)\}", localized_cause.get("intervention", ""))
-            
+
             if match:
                 value = match.group(1).strip()
                 proposed_patch = {

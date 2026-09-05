@@ -1,4 +1,3 @@
-from typing import List, Optional
 
 class RepairPrioritizer:
     """
@@ -14,7 +13,7 @@ class RepairPrioritizer:
     mathematically optimal repair set.
     """
 
-    def top_k(self, repairs: List[dict], k: int) -> dict:
+    def top_k(self, repairs: list[dict], k: int) -> dict:
         """
         Args:
             repairs: List of verified repair dicts. Each must contain:

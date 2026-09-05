@@ -1,28 +1,30 @@
-from typing import Dict, Any, List, Optional
 from pydantic import BaseModel
-from .schemas import BuyerIntentSchema
+
 from app.models import Product, ProductAttribute
+
+from .schemas import BuyerIntentSchema
+
 
 class ValidationResult(BaseModel):
     is_valid: bool
-    reason_code: Optional[str] = None
-    failed_constraints: List[str] = []
+    reason_code: str | None = None
+    failed_constraints: list[str] = []
 
 class IntentOracle:
     def __init__(self, intent: BuyerIntentSchema):
         self.intent = intent
 
-    def _extract_attributes(self, product_attributes: List[ProductAttribute]) -> Dict[str, str]:
+    def _extract_attributes(self, product_attributes: list[ProductAttribute]) -> dict[str, str]:
         return {attr.key: attr.value for attr in product_attributes}
 
-    def evaluate_sku(self, product: Product, product_attributes: List[ProductAttribute]) -> ValidationResult:
+    def evaluate_sku(self, product: Product, product_attributes: list[ProductAttribute]) -> ValidationResult:
         constraints = self.intent.hard_constraints
         attrs = self._extract_attributes(product_attributes)
-        
+
         # 1. Check forbidden categories
         if product.category in constraints.forbidden_categories:
             return ValidationResult(is_valid=False, reason_code="FORBIDDEN_CATEGORY_PRESENT", failed_constraints=[product.category])
-            
+
         # 2. Check forbidden attributes
         for forbidden_key, forbidden_values in constraints.forbidden_attributes.items():
             if forbidden_key in attrs and attrs[forbidden_key] in forbidden_values:
@@ -55,7 +57,7 @@ class IntentOracle:
 
         return ValidationResult(is_valid=True)
 
-    def evaluate_cart(self, products: List[Product], total_amount_paise: int) -> ValidationResult:
+    def evaluate_cart(self, products: list[Product], total_amount_paise: int) -> ValidationResult:
         # 1. Check budget
         if total_amount_paise > self.intent.max_budget_paise:
             return ValidationResult(is_valid=False, reason_code="MAX_BUDGET_EXCEEDED", failed_constraints=[f"Max: {self.intent.max_budget_paise}, Actual: {total_amount_paise}"])

@@ -1,12 +1,14 @@
 import pytest
-from app.db import Base, engine, SessionLocal
-from app.models import Product
+
+from app.db import Base, SessionLocal, engine
+
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_db():
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
+
 
 @pytest.fixture
 def db_session():

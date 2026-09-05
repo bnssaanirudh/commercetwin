@@ -1,21 +1,51 @@
-import pytest
 from app.analytics.repair import RepairSynthesizer
 from app.models import Product
 
-def test_repair_synthesizer():
-    # If the intent asked for a 65W charger but selected a 30W one due to corruption,
-    # the synthesizer should output a patch that fixes it.
-    original = Product(sku="SKU-1", title="30W Charger", category="Electronics")
-    synth = RepairSynthesizer(None) # Mock LLM not needed for pure logic test if bypassed
-    
-    # We'll test the bounding logic
-    patch = {
-        "sku": "SKU-1",
-        "action": "UPDATE_ATTRIBUTE",
-        "key": "power",
-        "new_value": "65W"
-    }
-    # In a real test we'd invoke the synthesizer, but since it requires an LLM we'll
-    # verify the expected patch schema is valid.
-    assert patch["action"] == "UPDATE_ATTRIBUTE"
-    assert patch["key"] == "power"
+
+def test_repair_synthesizer_patch_schema():
+    """
+    Verifies that the RepairSynthesizer rejects buyer-targeting patches
+    and accepts valid catalog patches.
+    """
+    from app.analytics.repair import RepairGuardrailViolation
+
+    synth = RepairSynthesizer(None)
+
+    # Valid catalog patch should not raise
+    result = synth.synthesize(
+        failure_cluster={"failure_id": "test"},
+        repair_type="CATALOG_SCHEMA_PATCH",
+        proposed_patch={"target_sku": "SKU-1", "operations": [{"key": "power", "new_value": "65W"}]},
+    )
+    assert result is not None
+    assert "repair_id" in result
+
+    # Buyer-targeting patch must be rejected
+    import pytest
+    with pytest.raises(RepairGuardrailViolation):
+        synth.synthesize(
+            failure_cluster={"failure_id": "test"},
+            repair_type="CATALOG_SCHEMA_PATCH",
+            proposed_patch={"buyer_constraints": "hacked"},
+        )
+
+
+def test_repair_synthesizer_blocks_financial_patch():
+    """Repair must not allow modifying payment_amount or financial_policy."""
+    from app.analytics.repair import RepairGuardrailViolation
+
+    synth = RepairSynthesizer(None)
+
+    import pytest
+    with pytest.raises(RepairGuardrailViolation):
+        synth.synthesize(
+            failure_cluster={"failure_id": "test"},
+            repair_type="CATALOG_SCHEMA_PATCH",
+            proposed_patch={"payment_amount": 1},
+        )
+
+
+def test_unused_product_model():
+    """Sanity check: Product model can be instantiated."""
+    p = Product(sku="TEST", title="Test Product", category="test")
+    assert p.sku == "TEST"

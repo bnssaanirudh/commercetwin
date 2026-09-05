@@ -11,13 +11,15 @@ from app.commerce.state import CommerceState
 class MockAgent:
     def __init__(self, selected_cart=None):
         self.selected_cart = selected_cart or []
-        
+        # Provide intent with a high budget so budget check never triggers in regression tests
+        self.intent = type("Intent", (), {"intent_id": "regression", "max_budget_paise": 99999999})()
+
     def discover_candidates(self):
         return []
-        
+
     def evaluate_candidates(self, candidates):
         return self.selected_cart
-        
+
     def select_cart(self, valid_candidates):
         return self.selected_cart
 

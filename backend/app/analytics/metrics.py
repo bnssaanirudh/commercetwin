@@ -4,7 +4,7 @@ All financial metrics are explicitly labeled SYNTHETIC / TEST MODE.
 No hardcoded percentages.
 """
 import statistics
-from typing import List, Dict, Any, Optional
+from typing import Any
 
 
 def _pct(numerator: int, denominator: int) -> float:
@@ -14,11 +14,11 @@ def _pct(numerator: int, denominator: int) -> float:
 class MetricsEngine:
     def compute(
         self,
-        traces: List[Dict[str, Any]],
-        failure_clusters: List[Dict[str, Any]] = None,
-        repair_proposals: List[Dict[str, Any]] = None,
-        trace_events_by_id: Dict[str, List[Dict]] = None,
-    ) -> Dict[str, Any]:
+        traces: list[dict[str, Any]],
+        failure_clusters: list[dict[str, Any]] | None = None,
+        repair_proposals: list[dict[str, Any]] | None = None,
+        trace_events_by_id: dict[str, list[dict]] | None = None,
+    ) -> dict[str, Any]:
         """
         Compute all standard CommerceTwin metrics from raw data.
 

@@ -1,12 +1,13 @@
 import json
-from typing import List, Dict, Any
+
+from app.adapters.llm import BaseModelAdapter, ModelResponse
 from app.buyers.agent import BaseBuyerAgent
 from app.buyers.schemas import BuyerIntentSchema
 from app.models import Product, ProductAttribute
-from app.adapters.llm import BaseModelAdapter, ModelResponse
+
 
 class LLMBuyer(BaseBuyerAgent):
-    def __init__(self, intent: BuyerIntentSchema, products: List[Product], attributes_map: Dict[str, List[ProductAttribute]], adapter: BaseModelAdapter):
+    def __init__(self, intent: BuyerIntentSchema, products: list[Product], attributes_map: dict[str, list[ProductAttribute]], adapter: BaseModelAdapter):
         super().__init__(intent, products, attributes_map)
         self.adapter = adapter
         self.total_latency_ms = 0
@@ -14,7 +15,7 @@ class LLMBuyer(BaseBuyerAgent):
         self.total_completion_tokens = 0
         self.model_calls = 0
 
-    def discover_candidates(self) -> List[Product]:
+    def discover_candidates(self) -> list[Product]:
         # Formulate prompt
         catalog_str = ""
         for p in self.products:
@@ -24,16 +25,16 @@ class LLMBuyer(BaseBuyerAgent):
             catalog_str += f"SKU: {p.sku} | Title: {p.title} | Category: {p.category} | Price: {price} | Attrs: {attr_str}\n"
 
         system_prompt = "You are a shopping assistant. Based on the buyer intent, select the most appropriate SKUs from the catalog. Output ONLY valid JSON containing a list of strings under the key 'proposed_skus'. Example: {\"proposed_skus\": [\"SKU-1\"]}"
-        
+
         prompt = f"Intent: {self.intent.raw_intent}\nBudget max paise: {self.intent.max_budget_paise}\n\nCatalog:\n{catalog_str}"
-        
+
         try:
             response: ModelResponse = self.adapter.generate(prompt=prompt, system_prompt=system_prompt)
             self.total_latency_ms += response.latency_ms
             self.total_prompt_tokens += response.prompt_tokens
             self.total_completion_tokens += response.completion_tokens
             self.model_calls += 1
-            
+
             self.log_trace("MODEL_CALL", {
                 "model": "fake_adapter",
                 "latency_ms": response.latency_ms,
@@ -43,7 +44,7 @@ class LLMBuyer(BaseBuyerAgent):
 
             data = json.loads(response.raw_content)
             proposed_skus = data.get("proposed_skus", [])
-        except Exception as e:
+        except (json.JSONDecodeError, KeyError, AttributeError) as e:
             self.log_trace("LLM_ERROR", {"error": str(e)})
             proposed_skus = []
 

@@ -1,10 +1,22 @@
 import datetime
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Text, CheckConstraint, JSON
-from sqlalchemy.orm import relationship
+
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    CheckConstraint,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
+
 from .db import Base
 
+
 def utcnow():
-    return datetime.datetime.now(datetime.timezone.utc)
+    return datetime.datetime.now(datetime.UTC)
 
 class TimestampMixin:
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
@@ -47,7 +59,7 @@ class InventorySnapshot(Base, TimestampMixin):
     merchant_id = Column(String, ForeignKey('merchants.merchant_id'), nullable=False)
     quantity = Column(Integer, nullable=False)
     version = Column(Integer, nullable=False, default=1)
-    
+
     __table_args__ = (
         CheckConstraint('quantity >= 0', name='chk_inventory_non_negative'),
     )

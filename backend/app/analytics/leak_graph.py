@@ -1,7 +1,9 @@
 import uuid
-from typing import List, Dict, Any
+
 from sqlalchemy.orm import Session
-from app.models import TransactionTrace, TraceEvent, FailureCluster, BuyerIntent
+
+from app.models import BuyerIntent, FailureCluster, TraceEvent, TransactionTrace
+
 
 class RevenueLeakCalculator:
     def __init__(self, db: Session):
@@ -16,21 +18,21 @@ class RevenueLeakCalculator:
         failed_traces = self.db.query(TransactionTrace).filter(
             TransactionTrace.final_classification == "FAILED"
         ).all()
-        
+
         clusters = {} # (stage, reason_code) -> {"count": int, "lost_value_paise": int, "trace_ids": list, "buyer_ids": set}
         total_lost_value = 0
         total_failures = 0
-        
+
         for trace in failed_traces:
             # Reconstruct the failure by looking at its events
             events = self.db.query(TraceEvent).filter(
                 TraceEvent.trace_id == trace.trace_id
             ).order_by(TraceEvent.event_id.asc()).all()
-            
+
             # Find the state before ABORTED
             last_state = "UNKNOWN"
             reason_code = "UNKNOWN_ERROR"
-            
+
             for event in events:
                 if event.event_type == "STATE_ENTERED":
                     state = event.payload.get("state")
@@ -39,22 +41,22 @@ class RevenueLeakCalculator:
                         break
                     else:
                         last_state = state
-            
+
             # Classify top-level stage
             stage = self._classify_stage(last_state)
-            
+
             # Estimate lost value (look at intent budget or final_amount_paise)
             # Use intent budget as the simulated eligible value
             intent = self.db.query(BuyerIntent).filter(
                 BuyerIntent.buyer_id == trace.buyer_id
             ).first()
-            
+
             lost_value = 0
             if intent and intent.budget_paise:
                 lost_value = intent.budget_paise
             elif trace.final_amount_paise:
                 lost_value = trace.final_amount_paise
-            
+
             key = (stage, reason_code)
             if key not in clusters:
                 clusters[key] = {
@@ -63,18 +65,18 @@ class RevenueLeakCalculator:
                     "trace_ids": [],
                     "buyer_ids": set()
                 }
-                
+
             clusters[key]["count"] += 1
             clusters[key]["lost_value_paise"] += lost_value
             clusters[key]["trace_ids"].append(trace.trace_id)
             clusters[key]["buyer_ids"].add(trace.buyer_id)
-            
+
             total_lost_value += lost_value
             total_failures += 1
-            
+
         # Clear old failure clusters to regenerate the graph deterministically
         self.db.query(FailureCluster).delete()
-        
+
         results = []
         for (stage, reason_code), data in clusters.items():
             cluster_id = str(uuid.uuid4())
@@ -87,11 +89,11 @@ class RevenueLeakCalculator:
                 supporting_trace_ids=data["trace_ids"]
             )
             self.db.add(fc)
-            
+
             percentage = 0
             if total_lost_value > 0:
                 percentage = (data["lost_value_paise"] / total_lost_value) * 100
-                
+
             results.append({
                 "failure_id": cluster_id,
                 "stage": stage,
@@ -102,12 +104,12 @@ class RevenueLeakCalculator:
                 "percentage_of_leak": round(percentage, 2),
                 "supporting_traces": data["trace_ids"]
             })
-            
+
         self.db.commit()
-        
+
         # Sort by highest lost value
         results.sort(key=lambda x: x["simulated_lost_value_paise"], reverse=True)
-        
+
         return {
             "total_failures": total_failures,
             "total_simulated_lost_value_paise": total_lost_value,

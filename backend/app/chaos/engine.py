@@ -1,8 +1,11 @@
 import copy
 import random
-from typing import List, Dict, Any, Optional
+from typing import Any
+
 from pydantic import BaseModel
+
 from app.models import Product
+
 
 class ChaosInjection(BaseModel):
     chaos_id: str
@@ -18,35 +21,35 @@ class ChaosInjection(BaseModel):
 
 class ChaosEngine:
     def __init__(self):
-        self.injections: List[ChaosInjection] = []
-        
-        # We hold the cloned state internally so we don't mutate canonical objects
-        self.cloned_products: List[Product] = []
-        self.cloned_inventory: Dict[str, int] = {}
-        self.cloned_pricing: Dict[str, int] = {}
-        self.cloned_policy: Dict[str, Any] = {}
+        self.injections: list[ChaosInjection] = []
 
-    def _clone_state(self, products: List[Product], inventory: Dict[str, int], 
-                     pricing: Dict[str, int], policy: Dict[str, Any]):
+        # We hold the cloned state internally so we don't mutate canonical objects
+        self.cloned_products: list[Product] = []
+        self.cloned_inventory: dict[str, int] = {}
+        self.cloned_pricing: dict[str, int] = {}
+        self.cloned_policy: dict[str, Any] = {}
+
+    def _clone_state(self, products: list[Product], inventory: dict[str, int],
+                     pricing: dict[str, int], policy: dict[str, Any]):
         # Deep copy to ensure safety
         self.cloned_products = copy.deepcopy(products)
         self.cloned_inventory = copy.deepcopy(inventory)
         self.cloned_pricing = copy.deepcopy(pricing)
         self.cloned_policy = copy.deepcopy(policy)
-        
-    def apply(self, products: List[Product], inventory: Dict[str, int], 
-              pricing: Dict[str, int], policy: Dict[str, Any], seed: int, profile: str):
+
+    def apply(self, products: list[Product], inventory: dict[str, int],
+              pricing: dict[str, int], policy: dict[str, Any], seed: int, profile: str):
         """Applies chaos mutations deterministically to a cloned state."""
         self._clone_state(products, inventory, pricing, policy)
         self.injections = []
         random.seed(seed)
-        
-        from app.chaos.context_chaos import apply_context_chaos
+
         from app.chaos.catalog_chaos import apply_catalog_chaos
         from app.chaos.commerce_chaos import apply_commerce_chaos
-        
+        from app.chaos.context_chaos import apply_context_chaos
+
         self.pending_injections = []
-        
+
         if profile in ["catalog", "all"]:
             self.injections.extend(apply_catalog_chaos(self.cloned_products, seed))
         if profile in ["context", "all"]:
@@ -55,7 +58,7 @@ class ChaosEngine:
             self.pending_injections.extend(apply_commerce_chaos(
                 self.cloned_products, self.cloned_inventory, self.cloned_pricing, self.cloned_policy, seed
             ))
-            
+
     def trigger_boundary(self, boundary_name: str):
         """Applies dynamic mid-flight injections when a specific state boundary is crossed."""
         triggered = [inj for inj in self.pending_injections if inj.start_boundary == boundary_name]
@@ -66,7 +69,7 @@ class ChaosEngine:
                 self.cloned_pricing[inj.reversible_patch["sku"]] = inj.mutated_state["price_paise"]
             elif inj.family == "checkout":
                 self.cloned_policy[inj.reversible_patch["key"]] = inj.mutated_state[inj.reversible_patch["key"]]
-            
+
             self.injections.append(inj)
             self.pending_injections.remove(inj)
 
@@ -91,13 +94,13 @@ class ChaosEngine:
             elif inj.family == "checkout":
                 key = inj.reversible_patch["key"]
                 self.cloned_policy[key] = inj.reversible_patch["value"]
-        
+
         self.injections = []
 
     def get_state(self):
         """Returns the mutated clones."""
         return self.cloned_products, self.cloned_inventory, self.cloned_pricing, self.cloned_policy
 
-    def get_trace_metadata(self) -> List[Dict[str, Any]]:
+    def get_trace_metadata(self) -> list[dict[str, Any]]:
         """Format matching TraceRecorder needs"""
         return [inj.model_dump() for inj in self.injections]

@@ -1,10 +1,11 @@
 import json
-import uuid
 import re
-from typing import Optional
+
 from pydantic import ValidationError
-from app.buyers.schemas import BuyerIntentSchema
+
 from app.adapters.llm import BaseModelAdapter
+from app.buyers.schemas import BuyerIntentSchema
+
 
 class IntentCompilerError(Exception):
     pass
@@ -32,7 +33,7 @@ Do not guess missing values. Output MUST be valid JSON.
 
     def compile(self, raw_intent: str, seed: int) -> BuyerIntentSchema:
         prompt = f"Raw intent: {raw_intent}\nSeed: {seed}\nOutput JSON:"
-        
+
         # Initial attempt
         try:
             response = self.adapter.generate(prompt=prompt, system_prompt=self.system_prompt)
@@ -41,7 +42,7 @@ Do not guess missing values. Output MUST be valid JSON.
             return BuyerIntentSchema(**data)
         except (json.JSONDecodeError, ValidationError) as e:
             # Bounded repair attempt (exactly 1 retry)
-            repair_prompt = f"Your previous output failed validation with error: {str(e)}\n\nFix the JSON to match the schema for this intent:\n{raw_intent}\nOutput JSON:"
+            repair_prompt = f"Your previous output failed validation with error: {e!s}\n\nFix the JSON to match the schema for this intent:\n{raw_intent}\nOutput JSON:"
             try:
                 repair_response = self.adapter.generate(prompt=repair_prompt, system_prompt=self.system_prompt)
                 json_str = self._extract_json(repair_response.raw_content)
@@ -52,5 +53,5 @@ Do not guess missing values. Output MUST be valid JSON.
                 raise IntentSchemaInvalidError(details=str(repair_e))
         except TimeoutError:
             raise IntentCompilerError("MODEL_TIMEOUT")
-        except Exception as e:
-            raise IntentCompilerError(f"UNEXPECTED_ERROR: {str(e)}")
+        except (OSError, ValueError, AttributeError) as e:
+            raise IntentCompilerError(f"UNEXPECTED_ERROR: {e!s}") from e

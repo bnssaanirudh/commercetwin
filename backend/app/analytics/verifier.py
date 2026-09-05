@@ -1,4 +1,5 @@
-from typing import Callable, List, Optional
+from collections.abc import Callable
+
 from app.commerce.runner import CommerceRunner
 from app.commerce.state import CommerceState
 
@@ -7,7 +8,7 @@ PAYMENT_VIOLATION_STATES = {CommerceState.PAYMENT, CommerceState.AMBIGUOUS_REMOT
 
 class VerificationResult:
     def __init__(self, status: str, before_metrics: dict, after_metrics: dict,
-                 replay_results: list, trade_off_notes: Optional[str] = None):
+                 replay_results: list, trade_off_notes: str | None = None):
         self.status = status          # "VERIFIED" | "REJECTED" | "NOT_VERIFIED"
         self.before_metrics = before_metrics
         self.after_metrics = after_metrics
@@ -40,7 +41,7 @@ class RepairVerifier:
         self,
         repair_proposal: dict,
         cohort_factory: Callable[[str], CommerceRunner],
-        cohort_trace_ids: List[str],
+        cohort_trace_ids: list[str],
         patched_cohort_factory: Callable[[str], CommerceRunner],
     ) -> VerificationResult:
         """
@@ -60,10 +61,10 @@ class RepairVerifier:
             base_runner = cohort_factory(trace_id)
             base_runner.run_to_precheck()
             before_state = base_runner.state_machine.current_state
-            
+
             # For non-payment repairs, reaching READY_FOR_PAYMENT is a success.
             before_success = (before_state == CommerceState.COMPLETED) or (not is_payment_repair and before_state == CommerceState.READY_FOR_PAYMENT)
-            
+
             before_results.append({
                 "trace_id": trace_id,
                 "outcome": before_state.value,
@@ -74,7 +75,7 @@ class RepairVerifier:
             patched_runner = patched_cohort_factory(trace_id)
             patched_runner.run_to_precheck()
             after_state = patched_runner.state_machine.current_state
-            
+
             after_success = (after_state == CommerceState.COMPLETED) or (not is_payment_repair and after_state == CommerceState.READY_FOR_PAYMENT)
 
             # Check for payment safety regression: patched run ends in a dangerous ambiguous state
