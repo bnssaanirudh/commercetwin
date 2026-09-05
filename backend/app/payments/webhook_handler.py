@@ -44,6 +44,7 @@ class WebhookProcessor:
     def verify_signature(self, raw_body: bytes, signature: str, secret: str) -> bool:
         """Verify Razorpay HMAC-SHA256 webhook signature."""
         if not secret:
+            logger.warning("Webhook verification skipped (no secret configured).")
             return True  # No secret configured — skip verification (dev mode)
         expected = hmac.new(
             secret.encode("utf-8"),
@@ -78,9 +79,10 @@ class WebhookProcessor:
         # Verify HMAC signature when both raw_body and signature are provided
         from app.config import settings
         webhook_secret = getattr(settings, "razorpay_webhook_secret", "")
-        if raw_body and signature and webhook_secret and not self.verify_signature(raw_body, signature, webhook_secret):
-            logger.warning("Webhook rejected: invalid HMAC signature event_id=%s", event_id)
-            return False
+        if webhook_secret:
+            if not raw_body or not signature or not self.verify_signature(raw_body, signature, webhook_secret):
+                logger.warning("Webhook rejected: invalid HMAC signature event_id=%s", event_id)
+                return False
 
         from app.db import SessionLocal
         from app.models import PaymentOperation, ProcessedWebhookEvent
@@ -122,15 +124,28 @@ class WebhookProcessor:
                         if payment_id:
                             op.razorpay_payment_id = payment_id
 
-                        # Verify amount matches what we stored (tamper detection)
                         if remote_amount is not None and remote_amount != op.amount_paise:
                             logger.error(
                                 "AMOUNT_MISMATCH order_id=%s expected=%d got=%d",
                                 order_id, op.amount_paise, remote_amount,
                             )
-                            # Reject without committing — amount tampering detected
-                            db.rollback()
+                            # Tampering detected — transition to failed state
+                            op.state = "failed"
+                            db.commit()
                             return False
+                else:
+                    # Quarantine unknown operations
+                    import uuid
+                    logger.warning("Quarantining unknown webhook order_id=%s", order_id)
+                    quarantine_op = PaymentOperation(
+                        operation_id=str(uuid.uuid4()),
+                        trace_id="UNKNOWN",
+                        amount_paise=remote_amount or 0,
+                        state="QUARANTINED",
+                        razorpay_order_id=order_id,
+                        razorpay_payment_id=payment_id,
+                    )
+                    db.add(quarantine_op)
 
             db.commit()
             # ── END ATOMIC BLOCK ─────────────────────────────────────────

@@ -17,7 +17,8 @@ export const fetchExperiments = async () => {
     if (!res.ok) throw new Error('Failed to fetch experiments');
     return await res.json();
   } catch (err) {
-    return { items: [], total: 0 };
+    console.error(err);
+    throw err;
   }
 };
 
@@ -27,7 +28,8 @@ export const fetchTraces = async () => {
     if (!res.ok) throw new Error('Failed to fetch traces');
     return await res.json();
   } catch (err) {
-    return { items: [], total: 0 };
+    console.error(err);
+    throw err;
   }
 };
 
@@ -37,7 +39,8 @@ export const fetchRepairs = async () => {
     if (!res.ok) throw new Error('Failed to fetch repairs');
     return await res.json();
   } catch (err) {
-    return { items: [], total: 0 };
+    console.error(err);
+    throw err;
   }
 };
 
@@ -47,6 +50,7 @@ export const runExperiment = async (id: string, payload: any) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   });
+  if (!res.ok) throw new Error('Failed to run experiment');
   return await res.json();
 };
 

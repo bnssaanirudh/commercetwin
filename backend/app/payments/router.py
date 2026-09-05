@@ -2,10 +2,12 @@ import hashlib
 import json
 import uuid
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
+from app.db import get_db
 
-from app.payments.config import settings
+from app.config import settings
 from app.payments.razorpay_client import RazorpayClientError, RazorpayService
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
@@ -23,7 +25,7 @@ class PaymentVerifyRequest(BaseModel):
 
 
 @router.post("/order")
-async def create_payment_order(req: OrderCreateRequest):
+async def create_payment_order(req: OrderCreateRequest, db: Session = Depends(get_db)):
     """
     Creates an order on Razorpay for checkout based on authoritative backend cart.
     Amount is read from the DB-persisted cart for this trace — never from the client.
@@ -38,16 +40,36 @@ async def create_payment_order(req: OrderCreateRequest):
         fingerprint_data = f"{trace_id}||v1||{calculated_amount_paise}||merchant_1"
         fingerprint = hashlib.sha256(fingerprint_data.encode()).hexdigest()
 
+        operation_id = str(uuid.uuid4())
+        
+        # Persist BEFORE network call to avoid lost state on crash
+        from app.models import PaymentOperation
+        op = PaymentOperation(
+            operation_id=operation_id,
+            trace_id=trace_id,
+            amount_paise=calculated_amount_paise,
+            state="created",
+            # We don't have order_id yet
+        )
+        db.add(op)
+        db.commit()
+        db.refresh(op)
+
         order = razorpay_service.create_order(
             amount_paise=calculated_amount_paise,
             receipt=trace_id,
         )
+        
+        # Now update with the real order ID
+        op.razorpay_order_id = order["id"]
+        db.commit()
+
         return {
             "order_id": order["id"],
             "amount": order["amount"],
             "currency": order["currency"],
             "key_id": settings.razorpay_key_id,
-            "operation_id": str(uuid.uuid4()),
+            "operation_id": operation_id,
             "fingerprint": fingerprint,
         }
     except RazorpayClientError as e:

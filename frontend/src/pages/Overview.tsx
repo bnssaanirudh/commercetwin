@@ -14,11 +14,15 @@ const data = [
 
 const Overview: React.FC = () => {
   const [metrics, setMetrics] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchMetrics().then(setMetrics);
+    fetchMetrics()
+      .then(setMetrics)
+      .catch(err => setError(err.message));
   }, []);
 
+  if (error) return <div style={{ padding: '2rem', color: 'var(--accent-red)' }}>Error loading metrics: {error}</div>;
   if (!metrics) return <div>Loading...</div>;
 
   return (

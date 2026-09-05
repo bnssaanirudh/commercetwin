@@ -1,0 +1,8 @@
+{
+  "Robust_Transaction_Yield": "SKIPPED",
+  "Intent_Integrity": "SKIPPED",
+  "Agentic_Value_at_Risk_Paise": "SKIPPED",
+  "Recovered_Eligible_Value_Paise": "SKIPPED",
+  "status": "SKIPPED",
+  "reason": "No LLM API key available"
+}

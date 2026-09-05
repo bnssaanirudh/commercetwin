@@ -55,25 +55,11 @@ class RepairSynthesizer:
         # Auto-generation for MISSING_TYPED_ATTRIBUTE
         if localized_cause and localized_cause.get("hypothesis") == "missing_typed_attribute":
             repair_type = "CATALOG_SCHEMA_PATCH"
-            sku = localized_cause.get("sku")
-            attr = localized_cause.get("intervention", "").split("'")[1] if "'" in localized_cause.get("intervention", "") else "unknown"
-
-            # Attempt to extract the value from the intervention string
-            import re
-            match = re.search(r"restore missing attributes \{.*?:\s*'([^']+)'\}", localized_cause.get("intervention", ""))
-            if not match:
-                match = re.search(r"restore missing attributes \{.*?:\s*([^}]+)\}", localized_cause.get("intervention", ""))
-
-            if match:
-                value = match.group(1).strip()
-                proposed_patch = {
-                    "target_sku": sku,
-                    "operations": [{"op": "add", "path": f"/attributes/{attr}", "value": value}],
-                    "value_source": "inferred_from_buyer_intent"
-                }
-                confidence = max(confidence, 90)
-            else:
-                return {"status": "MANUAL_REVIEW_REQUIRED", "reason": f"Factual value for {attr} on {sku} not found."}
+            sku = localized_cause.get("sku", "unknown")
+            # We must stop inferring product facts from the buyer's intent.
+            # Realism dictates that a merchant cannot just invent product attributes
+            # simply because a buyer requested them.
+            return {"status": "MANUAL_REVIEW_REQUIRED", "reason": f"Factual value for missing attribute on {sku} not found. Must be verified externally."}
 
         # --- Guardrail 1: Repair type must be supported ---
         if repair_type not in ALLOWED_REPAIR_TYPES:
@@ -82,12 +68,27 @@ class RepairSynthesizer:
             )
 
         # --- Guardrail 2: Blocked patch keys (buyer constraints, invented facts) ---
-        for blocked_key in BLOCKED_PATCH_KEYS:
-            if blocked_key in proposed_patch:
-                raise RepairGuardrailViolation(
-                    f"Proposed patch contains blocked key '{blocked_key}'. "
-                    f"Repairs cannot mutate buyer constraints or invent product facts."
-                )
+        def contains_blocked_key(data: dict | list) -> str | None:
+            if isinstance(data, dict):
+                for k, v in data.items():
+                    if k in BLOCKED_PATCH_KEYS:
+                        return k
+                    found = contains_blocked_key(v)
+                    if found:
+                        return found
+            elif isinstance(data, list):
+                for item in data:
+                    found = contains_blocked_key(item)
+                    if found:
+                        return found
+            return None
+
+        blocked = contains_blocked_key(proposed_patch)
+        if blocked:
+            raise RepairGuardrailViolation(
+                f"Proposed patch contains blocked key '{blocked}'. "
+                f"Repairs cannot mutate buyer constraints or invent product facts."
+            )
 
         # --- Guardrail 3: Cannot increase price_paise ---
         if "price_paise" in proposed_patch:

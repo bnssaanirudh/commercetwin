@@ -34,10 +34,9 @@ class CausalLocalizer:
         runner.run_to_precheck()
 
         if runner.state_machine.current_state == CommerceState.READY_FOR_PAYMENT:
-            # For simplicity in testing counterfactuals, if we make it to payment,
-            # we run it. Note: in a real causal test, we might skip actual payment
-            # or use a mock adapter.
-            runner.process_payment()
+            # Counterfactual repair verification must stop at READY_FOR_PAYMENT
+            # and not create any payment side effects.
+            pass
 
         return runner.state_machine.current_state
 
@@ -135,12 +134,12 @@ class CausalLocalizer:
                         )
                         patched_products.append(sku)
 
+            original_factory = self.runner_factory
             def catalog_variant_factory():
-                runner = self.runner_factory()
+                runner = original_factory()
                 runner.agent.attributes_map = restored_attrs
                 return runner
 
-            original_factory = self.runner_factory
             self.runner_factory = catalog_variant_factory
             outcome = self._run_variant()
             self.runner_factory = original_factory

@@ -1,0 +1,18 @@
+{
+  "Robust_Transaction_Yield": 0.91,
+  "RTY_CI_95_lo": 0.85,
+  "RTY_CI_95_hi": 0.96,
+  "Intent_Integrity": 0.989,
+  "Constraint_Violation_Rate": 0.011,
+  "Agentic_Value_at_Risk_Paise": 5390494,
+  "Recovered_Eligible_Value_Paise": 50204349,
+  "Latency_Mean_ms": 5.88,
+  "Latency_Median_ms": 1.78,
+  "Latency_P95_ms": 19.82,
+  "Total_Scenarios": 100,
+  "Total_Eligible": 100,
+  "Total_Ineligible": 0,
+  "Total_Successful": 91,
+  "Total_Failed": 9,
+  "Total_Recovered": 0
+}

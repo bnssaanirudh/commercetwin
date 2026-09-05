@@ -3,11 +3,16 @@ import React, { useEffect, useState } from 'react';
 const Payments: React.FC = () => {
   const [payments, setPayments] = useState<any[]>([]);
 
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     fetch('http://localhost:8000/api/v1/payments')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch payments');
+        return res.json();
+      })
       .then(data => setPayments(data.items || []))
-      .catch(console.error);
+      .catch(err => setError(err.message));
   }, []);
 
   return (
@@ -29,7 +34,12 @@ const Payments: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {payments.length === 0 ? (
+            {error && (
+              <tr>
+                <td colSpan={6} style={{ textAlign: 'center', color: 'var(--accent-red)' }}>Error: {error}</td>
+              </tr>
+            )}
+            {!error && payments.length === 0 ? (
               <tr>
                 <td colSpan={6} style={{ textAlign: 'center', opacity: 0.5 }}>No payments processed</td>
               </tr>

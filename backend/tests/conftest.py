@@ -1,7 +1,11 @@
+import os
 import pytest
 
-from app.db import Base, SessionLocal, engine
+# Ensure testing uses an in-memory SQLite database to prevent dropping the real dev database.
+# This MUST happen before any app modules are imported.
+os.environ["DATABASE_URL"] = "sqlite+pysqlite:///:memory:"
 
+from app.db import Base, SessionLocal, engine
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_db():

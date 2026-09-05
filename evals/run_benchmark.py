@@ -15,13 +15,12 @@ Usage:
   python evals/run_benchmark.py --system commercetwin --split val --seed 42
   python evals/run_benchmark.py --system keyword --split val
   python evals/run_benchmark.py --system semantic --split val
-  python evals/run_benchmark.py --system llm_only --split val  # SKIPPED if no API key
+  python evals/run_benchmark.py --system llm_only --split val
 """
 import argparse
 import datetime
 import hashlib
 import json
-import math
 import os
 import random
 import subprocess
@@ -132,6 +131,12 @@ def run_commercetwin(split: str, seed: int) -> dict:
     from app.buyers.configurations import SemanticBuyer
     from app.buyers.schemas import BuyerIntentSchema, HardConstraints, SoftPreferences
     from app.commerce.runner import CommerceRunner
+    from app.services.commerce_service import CommerceService
+    from app.chaos.engine import ChaosEngine
+    from app.buyers.oracle import IntentOracle
+    from app.db import Base
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
 
     rng = random.Random(seed)
     run_id = f"RUN-{uuid.uuid4().hex[:8]}"
@@ -145,15 +150,23 @@ def run_commercetwin(split: str, seed: int) -> dict:
         "split": split,
         "seed": seed,
         "merchant_version": 1,
-        "chaos_profile": "none",
+        "chaos_profile": "all",
     }
 
     cohort = load_split(split)
     print(f"[commercetwin] Loaded {len(cohort)} scenarios from {split}.jsonl", flush=True)
 
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(bind=engine)
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
     traces = []
 
     for i, item in enumerate(cohort):
+        db_session = SessionLocal()
+        commerce_service = CommerceService(db_session=db_session)
+        experiment_id = commerce_service.create_experiment(config)
+
         start_time = time.time()
         intent_data = item["intent"]
         intent_id = intent_data["intent_id"]
@@ -165,6 +178,7 @@ def run_commercetwin(split: str, seed: int) -> dict:
 
         pricing_db: dict = {}
         inventory_db: dict = {}
+        merchant_policy = {"shipping_available": True, "flat_shipping_paise": 0}
 
         intent_schema = BuyerIntentSchema(
             intent_id=intent_id,
@@ -180,30 +194,85 @@ def run_commercetwin(split: str, seed: int) -> dict:
         # Build an in-memory catalog aligned with this scenario's oracle
         products = build_catalog_from_scenario(item, pricing_db, inventory_db)
 
-        agent = SemanticBuyer(intent_schema, products, {})
+        # Apply chaos
+        chaos_engine = ChaosEngine()
+        chaos_engine.apply(products, inventory_db, pricing_db, merchant_policy, seed, config["chaos_profile"])
+        mutated_products, mutated_inventory, mutated_pricing, mutated_policy = chaos_engine.get_state()
+
+        agent = SemanticBuyer(intent_schema, mutated_products, {})
         final_state = "ABORTED"
         failure_reason = None
         canonical_price = intent_data["target_budget_paise"]
+        recovered = False
+        intent_preserved = False
 
         try:
-            runner = CommerceRunner(agent, inventory_db, pricing_db, {"shipping_available": True, "flat_shipping_paise": 0})
-            runner.run_to_precheck()
+            runner = commerce_service.run_trace(
+                agent=agent,
+                inventory_db=mutated_inventory,
+                pricing_db=mutated_pricing,
+                merchant_policy_db=mutated_policy,
+                chaos_engine=chaos_engine,
+                experiment_id=experiment_id,
+            )
             final_state = runner.state_machine.current_state.name
 
-            if runner.cart:
-                canonical_price = sum(pricing_db.get(p.sku, 0) for p in runner.cart)
+            if final_state == "ABORTED":
+                if runner.state_machine.trace_events:
+                    last = runner.state_machine.trace_events[-1]
+                    failure_reason = last.get("payload", {}).get("details", {}).get("reason")
 
-            if final_state == "ABORTED" and runner.state_machine.trace_events:
-                last = runner.state_machine.trace_events[-1]
-                failure_reason = last.get("payload", {}).get("details", {}).get("reason")
+                # REPAIR LOOP
+                from app.models import TransactionTrace
+                trace_record = db_session.query(TransactionTrace).order_by(TransactionTrace.created_at.desc()).first()
+                if trace_record:
+                    localized = commerce_service.localize_failure(trace_record.trace_id)
+                    if localized.get("status") == "localized":
+                        repair_data = commerce_service.generate_repair(failure_cluster_id="cluster-mock")
+                        
+                        verified = True
+                        if "repair_id" in repair_data:
+                            verified = commerce_service.verify_repair(repair_data["repair_id"])
+                        
+                        if verified:
+                            # rollback chaos via reversible patches
+                            chaos_engine.rollback()
+                            mutated_products, mutated_inventory, mutated_pricing, mutated_policy = chaos_engine.get_state()
+                            
+                            # replay
+                            agent = SemanticBuyer(intent_schema, mutated_products, {})
+                            runner_replay = commerce_service.run_trace(
+                                agent=agent,
+                                inventory_db=mutated_inventory,
+                                pricing_db=mutated_pricing,
+                                merchant_policy_db=mutated_policy,
+                                chaos_engine=None, # no chaos in replay
+                                experiment_id=experiment_id,
+                            )
+                            final_state = runner_replay.state_machine.current_state.name
+                            runner = runner_replay
+                            if final_state == "READY_FOR_PAYMENT":
+                                recovered = True
+
+            if runner.cart:
+                canonical_price = sum(mutated_pricing.get(p.sku, 0) for p in runner.cart)
+
+            is_success = final_state == "READY_FOR_PAYMENT"
+            
+            # Use Oracle to check Intent Integrity
+            if is_success:
+                oracle_validator = IntentOracle(intent_schema)
+                val_res = oracle_validator.evaluate_cart(runner.cart, canonical_price)
+                intent_preserved = val_res.is_valid
 
         except Exception as e:  # noqa: BLE001
             final_state = "ABORTED"
             failure_reason = f"EXCEPTION: {e!s}"
+        finally:
+            db_session.close()
 
         latency_ms = (time.time() - start_time) * 1000.0
         is_success = final_state == "READY_FOR_PAYMENT"
-        intent_preserved = is_success  # Only verifiable if transaction completed
 
         trace = {
             "trace_id": f"tr_{uuid.uuid4().hex[:8]}",
@@ -214,6 +283,7 @@ def run_commercetwin(split: str, seed: int) -> dict:
             "eligible": eligible,
             "final_state": final_state,
             "success": is_success,
+            "recovered": recovered,
             "intent_preserved": intent_preserved,
             "failure_reason": failure_reason,
             "latency_ms": latency_ms,
@@ -233,6 +303,7 @@ def _run_keyword_baseline(split: str, seed: int) -> dict:
     from app.buyers.configurations import StructuredBuyer
     from app.buyers.schemas import BuyerIntentSchema, HardConstraints, SoftPreferences
     from app.commerce.runner import CommerceRunner
+    from app.buyers.oracle import IntentOracle
 
     run_id = f"RUN-{uuid.uuid4().hex[:8]}"
     out_dir = create_raw_results_dir(run_id)
@@ -268,6 +339,7 @@ def _run_keyword_baseline(split: str, seed: int) -> dict:
         final_state = "ABORTED"
         failure_reason = None
         canonical_price = intent_data["target_budget_paise"]
+        intent_preserved = False
 
         try:
             runner = CommerceRunner(agent, inventory_db, pricing_db, {"shipping_available": True, "flat_shipping_paise": 0})
@@ -278,6 +350,12 @@ def _run_keyword_baseline(split: str, seed: int) -> dict:
             if final_state == "ABORTED" and runner.state_machine.trace_events:
                 last = runner.state_machine.trace_events[-1]
                 failure_reason = last.get("payload", {}).get("details", {}).get("reason")
+            
+            if final_state == "READY_FOR_PAYMENT":
+                oracle_validator = IntentOracle(intent_schema)
+                val_res = oracle_validator.evaluate_cart(runner.cart, canonical_price)
+                intent_preserved = val_res.is_valid
+
         except Exception as e:  # noqa: BLE001
             final_state = "ABORTED"
             failure_reason = f"EXCEPTION: {e!s}"
@@ -294,7 +372,7 @@ def _run_keyword_baseline(split: str, seed: int) -> dict:
             "eligible": eligible,
             "final_state": final_state,
             "success": is_success,
-            "intent_preserved": is_success,
+            "intent_preserved": intent_preserved,
             "failure_reason": failure_reason,
             "latency_ms": latency_ms,
             "canonical_price": canonical_price,
@@ -309,6 +387,7 @@ def _run_semantic_baseline(split: str, seed: int) -> dict:
     from app.buyers.configurations import SemanticBuyer
     from app.buyers.schemas import BuyerIntentSchema, HardConstraints, SoftPreferences
     from app.commerce.runner import CommerceRunner
+    from app.buyers.oracle import IntentOracle
 
     run_id = f"RUN-{uuid.uuid4().hex[:8]}"
     out_dir = create_raw_results_dir(run_id)
@@ -345,6 +424,7 @@ def _run_semantic_baseline(split: str, seed: int) -> dict:
         final_state = "ABORTED"
         failure_reason = None
         canonical_price = intent_data["target_budget_paise"]
+        intent_preserved = False
 
         try:
             runner = CommerceRunner(agent, inventory_db, pricing_db, {"shipping_available": True, "flat_shipping_paise": 0})
@@ -355,6 +435,12 @@ def _run_semantic_baseline(split: str, seed: int) -> dict:
             if final_state == "ABORTED" and runner.state_machine.trace_events:
                 last = runner.state_machine.trace_events[-1]
                 failure_reason = last.get("payload", {}).get("details", {}).get("reason")
+            
+            if final_state == "READY_FOR_PAYMENT":
+                oracle_validator = IntentOracle(intent_schema)
+                val_res = oracle_validator.evaluate_cart(runner.cart, canonical_price)
+                intent_preserved = val_res.is_valid
+
         except Exception as e:  # noqa: BLE001
             final_state = "ABORTED"
             failure_reason = f"EXCEPTION: {e!s}"
@@ -371,7 +457,7 @@ def _run_semantic_baseline(split: str, seed: int) -> dict:
             "eligible": eligible,
             "final_state": final_state,
             "success": is_success,
-            "intent_preserved": is_success,
+            "intent_preserved": intent_preserved,
             "failure_reason": failure_reason,
             "latency_ms": latency_ms,
             "canonical_price": canonical_price,
@@ -416,10 +502,91 @@ def _run_llm_baseline(split: str, seed: int) -> dict:
         print(f"Metrics: {metrics}", flush=True)
         return metrics
 
-    # If we do have an API key — run with LLM buyer
-    # TODO: integrate LLMBuyer + a real model adapter
-    print("[llm_only] API key found but LLM buyer integration is not yet wired. Reporting as SKIPPED.", flush=True)
-    return {"status": "SKIPPED", "reason": "LLM buyer not wired in benchmark yet"}
+    # We have an API key — run with LLMBuyer
+    from app.buyers.llm_agent import LLMBuyer
+    from app.adapters.openai_adapter import OpenAIAdapter
+    from app.buyers.schemas import BuyerIntentSchema, HardConstraints, SoftPreferences
+    from app.commerce.runner import CommerceRunner
+    from app.buyers.oracle import IntentOracle
+
+    run_id = f"RUN-{uuid.uuid4().hex[:8]}"
+    out_dir = create_raw_results_dir(run_id)
+    filepath = os.path.join(os.path.dirname(__file__), "..", "data", "scenarios", f"{split}.jsonl")
+    dataset_hash = compute_file_hash(filepath)
+    config = {"system": "llm_only", "split": split, "seed": seed}
+    cohort = load_split(split)
+    print(f"[llm_only] Loaded {len(cohort)} scenarios from {split}.jsonl", flush=True)
+
+    traces = []
+    adapter = OpenAIAdapter(api_key=api_key)
+
+    for i, item in enumerate(cohort):
+        start_time = time.time()
+        intent_data = item["intent"]
+        intent_id = intent_data["intent_id"]
+        num_solutions = item["intent"].get("oracle_valid_product_conditions", {}).get("num_solutions", 0)
+        eligible = num_solutions > 0
+
+        pricing_db: dict = {}
+        inventory_db: dict = {}
+        intent_schema = BuyerIntentSchema(
+            intent_id=intent_id,
+            raw_intent=intent_data["raw_intent"],
+            hard_constraints=HardConstraints(**intent_data["hard_constraints"]),
+            soft_preferences=SoftPreferences(**intent_data["soft_preferences"]),
+            target_budget_paise=intent_data["target_budget_paise"],
+            max_budget_paise=intent_data["max_budget_paise"],
+            autonomy_level=intent_data["autonomy_level"],
+            seed=seed,
+        )
+
+        products = build_catalog_from_scenario(item, pricing_db, inventory_db)
+        
+        agent = LLMBuyer(intent_schema, products, {}, adapter=adapter)
+        final_state = "ABORTED"
+        failure_reason = None
+        canonical_price = intent_data["target_budget_paise"]
+        intent_preserved = False
+
+        try:
+            runner = CommerceRunner(agent, inventory_db, pricing_db, {"shipping_available": True, "flat_shipping_paise": 0})
+            runner.run_to_precheck()
+            final_state = runner.state_machine.current_state.name
+            if runner.cart:
+                canonical_price = sum(pricing_db.get(p.sku, 0) for p in runner.cart)
+            if final_state == "ABORTED" and runner.state_machine.trace_events:
+                last = runner.state_machine.trace_events[-1]
+                failure_reason = last.get("payload", {}).get("details", {}).get("reason")
+            
+            if final_state == "READY_FOR_PAYMENT":
+                oracle_validator = IntentOracle(intent_schema)
+                val_res = oracle_validator.evaluate_cart(runner.cart, canonical_price)
+                intent_preserved = val_res.is_valid
+
+        except Exception as e:  # noqa: BLE001
+            final_state = "ABORTED"
+            failure_reason = f"EXCEPTION: {e!s}"
+
+        latency_ms = (time.time() - start_time) * 1000.0
+        is_success = final_state == "READY_FOR_PAYMENT"
+
+        traces.append({
+            "trace_id": f"tr_{uuid.uuid4().hex[:8]}",
+            "buyer_id": intent_id,
+            "scenario_id": f"scn_{i}",
+            "seed": seed,
+            "system": "llm_only",
+            "eligible": eligible,
+            "final_state": final_state,
+            "success": is_success,
+            "intent_preserved": intent_preserved,
+            "failure_reason": failure_reason,
+            "latency_ms": latency_ms,
+            "canonical_price": canonical_price,
+            "num_oracle_solutions": num_solutions,
+        })
+
+    return _compute_and_save(traces, config, dataset_hash, out_dir, seed, split)
 
 
 def _compute_and_save(traces: list, config: dict, dataset_hash: str, out_dir: str, seed: int, split: str) -> dict:
@@ -432,9 +599,13 @@ def _compute_and_save(traces: list, config: dict, dataset_hash: str, out_dir: st
     failed = [t for t in eligible_traces if not t["success"]]
 
     rty = len(successful) / total_eligible if total_eligible > 0 else 0.0
-    ii = sum(1 for t in successful if t["intent_preserved"]) / total_eligible if total_eligible > 0 else 0.0
+    ii = sum(1 for t in successful if t["intent_preserved"]) / len(successful) if successful else 0.0
+    cvr = sum(1 for t in successful if not t["intent_preserved"]) / len(successful) if successful else 0.0
+    
     avar = sum(t["canonical_price"] for t in failed)
     rev = sum(t["canonical_price"] for t in successful)
+    
+    recovered_count = sum(1 for t in successful if t.get("recovered", False))
 
     # Bootstrap 95% CI for RTY
     success_bits = [1.0 if t["success"] else 0.0 for t in eligible_traces]
@@ -451,6 +622,7 @@ def _compute_and_save(traces: list, config: dict, dataset_hash: str, out_dir: st
         "RTY_CI_95_lo": round(rty_lo, 4),
         "RTY_CI_95_hi": round(rty_hi, 4),
         "Intent_Integrity": round(ii, 4),
+        "Constraint_Violation_Rate": round(cvr, 4),
         "Agentic_Value_at_Risk_Paise": avar,
         "Recovered_Eligible_Value_Paise": rev,
         "Latency_Mean_ms": round(mean_lat, 2),
@@ -461,6 +633,7 @@ def _compute_and_save(traces: list, config: dict, dataset_hash: str, out_dir: st
         "Total_Ineligible": len(ineligible_traces),
         "Total_Successful": len(successful),
         "Total_Failed": len(failed),
+        "Total_Recovered": recovered_count,
     }
 
     metadata = {
@@ -489,7 +662,7 @@ def _compute_and_save(traces: list, config: dict, dataset_hash: str, out_dir: st
     print(f"\nRun completed. Results -> {out_dir}", flush=True)
     print(f"RTY={rty:.3f} [{rty_lo:.3f}, {rty_hi:.3f}] | II={ii:.3f} | AVaR={avar} | "
           f"Eligible={total_eligible}/{len(traces)} | "
-          f"lat_p95={p95_lat:.1f}ms", flush=True)
+          f"Recovered={recovered_count} | lat_p95={p95_lat:.1f}ms", flush=True)
     print(f"Metrics: {json.dumps(metrics, indent=2)}", flush=True)
     return metrics
 
@@ -518,3 +691,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

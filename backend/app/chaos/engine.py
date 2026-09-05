@@ -78,13 +78,13 @@ class ChaosEngine:
         # Reverse in reverse order
         for inj in reversed(self.injections):
             if inj.family in ["catalog", "context"]:
-                idx = inj.reversible_patch["index"]
+                idx = inj.reversible_patch.get("index", 0)
                 if "field" in inj.reversible_patch:
                     # Catalog generic rollback
                     setattr(self.cloned_products[idx], inj.reversible_patch["field"], inj.reversible_patch["value"])
                 else:
                     # Context description rollback
-                    self.cloned_products[idx].description = inj.reversible_patch["description"]
+                    self.cloned_products[idx].description = inj.reversible_patch.get("description", "")
             elif inj.family in ["inventory_price", "price"]:
                 sku = inj.reversible_patch["sku"]
                 self.cloned_pricing[sku] = inj.reversible_patch["price_paise"]

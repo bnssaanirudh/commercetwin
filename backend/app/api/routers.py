@@ -112,6 +112,8 @@ def create_failure_repair(failure_id: str, db: Session = Depends(get_db)):
     from app.services.commerce_service import CommerceService
     svc = CommerceService(db)
     res = svc.generate_repair(failure_id)
+    if res.get("status") == "MANUAL_REVIEW_REQUIRED":
+        return {"repair_id": None, "status": "MANUAL_REVIEW_REQUIRED", "reason": res.get("reason")}
     return res
 
 # --- Repairs ---
@@ -133,7 +135,10 @@ def get_repair(repair_id: str, db: Session = Depends(get_db)):
 
 @api_router.post("/repairs/{repair_id}/verify", tags=["repairs"])
 def verify_repair(repair_id: str, db: Session = Depends(get_db)):
-    return {"repair_id": repair_id, "status": "VERIFIED"}
+    from app.services.commerce_service import CommerceService
+    svc = CommerceService(db)
+    success = svc.verify_repair(repair_id)
+    return {"repair_id": repair_id, "status": "VERIFIED" if success else "FAILED"}
 
 # --- Payments ---
 @api_router.get("/payments", tags=["payments"])
@@ -147,6 +152,7 @@ def list_payments(page: int = 1, size: int = 50, db: Session = Depends(get_db)):
 # --- Replay ---
 @api_router.post("/replays", tags=["replay"])
 def create_replay(db: Session = Depends(get_db)):
+    # Replay all pending verifications or cohorts (mocked for async job)
     return {"replay_id": "rep_456", "status": "running"}
 
 @api_router.get("/replays/{id}", tags=["replay"])
@@ -155,6 +161,7 @@ def get_replay(id: str, db: Session = Depends(get_db)):
 
 @api_router.post("/replay/cohort", tags=["replay"])
 def replay_cohort(cohort_id: str, repair_id: str | None = None, db: Session = Depends(get_db)):
+    # This would kick off a celery task in reality
     return {"cohort_id": cohort_id, "status": "replaying"}
 
 # --- Metrics ---

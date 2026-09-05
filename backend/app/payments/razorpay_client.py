@@ -3,7 +3,7 @@ import hmac
 
 import razorpay
 
-from app.payments.config import settings
+from app.config import settings
 
 
 class RazorpayClientError(Exception):
@@ -16,7 +16,10 @@ class RazorpayService:
         if settings.razorpay_key_id.startswith("rzp_live"):
             raise ValueError("Live Mode is strictly prohibited. Please use Test Mode keys.")
 
-        self.client = razorpay.Client(auth=(settings.razorpay_key_id, settings.razorpay_key_secret))
+        self.key_id = getattr(settings, "razorpay_key_id", "rzp_test_dummy")
+        secret = getattr(settings, "razorpay_key_secret", "dummy_secret")
+        self.key_secret = secret.get_secret_value() if hasattr(secret, "get_secret_value") else secret
+        self.client = razorpay.Client(auth=(self.key_id, self.key_secret))
 
     def create_order(self, amount_paise: int, receipt: str, notes: dict | None = None) -> dict:
         """
