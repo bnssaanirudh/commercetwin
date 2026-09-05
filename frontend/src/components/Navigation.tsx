@@ -14,6 +14,8 @@ const Navigation: React.FC = () => {
           <NavLink to="/run" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>Run Experiment</NavLink>
           <NavLink to="/experiments" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>Experiments</NavLink>
           <NavLink to="/traces" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>Traces</NavLink>
+          <NavLink to="/revenue-leak" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>Revenue Leak</NavLink>
+          <NavLink to="/repairs" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>Repairs</NavLink>
           <NavLink to="/chaos" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>Repair/Replay</NavLink>
           <NavLink to="/payments" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>Payment Safety</NavLink>
         </nav>

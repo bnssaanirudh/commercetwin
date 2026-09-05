@@ -19,7 +19,7 @@ const ChaosLab: React.FC = () => {
     e.stopPropagation();
     setReplaying(prev => ({ ...prev, [repairId]: true }));
     try {
-      const res = await fetch(`${API_BASE}/replay/cohort?repair_id=${repairId}`, { method: 'POST' });
+      const res = await fetch(`${API_BASE}/replay/cohort?cohort_id=default_cohort&repair_id=${repairId}`, { method: 'POST' });
       if (!res.ok) throw new Error('Replay failed');
       // Ideally we would poll or subscribe for updates here.
       alert('Replay job started successfully');

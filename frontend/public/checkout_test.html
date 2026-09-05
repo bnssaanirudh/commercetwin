@@ -44,7 +44,7 @@
                 const orderRes = await fetch(`${API_BASE}/order`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ amount_paise: 10000, receipt_id: "test_receipt_123" }) // 100 INR
+                    body: JSON.stringify({ trace_id: "TRC-TEST-123" }) // Match OrderCreateRequest schema
                 });
                 
                 if (!orderRes.ok) throw new Error(await orderRes.text());
