@@ -1,7 +1,7 @@
-from app.analytics.repair import RepairSynthesizer
-from app.models import Product
 from app.analytics.causal import CausalLocalizer
-from app.commerce.runner import CommerceRunner, CommerceState
+from app.analytics.repair import RepairSynthesizer
+from app.commerce.runner import CommerceState
+from app.models import Product
 
 
 def test_repair_synthesizer_patch_schema():
@@ -79,8 +79,8 @@ class MockRunner:
         self.fails_due_to = fails_due_to
         self.state_machine = type("SM", (), {"current_state": CommerceState.ABORTED})()
         self.cart = [Product(sku="SKU-1", title="Test", category="test")]
-        setattr(self.cart[0], 'price_paise', 100)
-    
+        self.cart[0].price_paise = 100
+
     def run_to_precheck(self):
         if self.fails_due_to == "MISSING_REQUIRED_ATTRIBUTE":
             # Check if attribute was injected by localizer
@@ -110,7 +110,7 @@ class MockRunner:
 def test_causal_localizer_missing_attribute():
     def factory():
         return MockRunner(fails_due_to="MISSING_REQUIRED_ATTRIBUTE")
-    
+
     localizer = CausalLocalizer(
         runner_factory=factory,
         base_inventory={"SKU-1": 10},
@@ -125,7 +125,7 @@ def test_causal_localizer_missing_attribute():
 def test_causal_localizer_stale_inventory():
     def factory():
         return MockRunner(fails_due_to="STALE_INVENTORY")
-    
+
     localizer = CausalLocalizer(
         runner_factory=factory,
         base_inventory={"SKU-1": 0},
@@ -140,7 +140,7 @@ def test_causal_localizer_stale_inventory():
 def test_causal_localizer_stale_price():
     def factory():
         return MockRunner(fails_due_to="STALE_PRICE")
-    
+
     localizer = CausalLocalizer(
         runner_factory=factory,
         base_inventory={"SKU-1": 10},
