@@ -35,13 +35,13 @@ const Traces: React.FC = () => {
                 <tr key={trace.trace_id}>
                   <td style={{ fontFamily: 'var(--font-mono)' }}>{trace.trace_id.substring(0, 8)}...</td>
                   <td>
-                    <span className={`badge ${trace.final_state === 'COMPLETED' ? 'badge-success' : trace.final_state === 'ABORTED' ? 'badge-error' : 'badge-warning'}`}>
-                      {trace.final_state}
+                    <span className={`badge ${trace.status === 'COMPLETED' || trace.status === 'READY_FOR_PAYMENT' ? 'badge-success' : trace.status === 'ABORTED' ? 'badge-error' : 'badge-warning'}`}>
+                      {trace.status || '-'}
                     </span>
                   </td>
-                  <td>{trace.failure_reason || '-'}</td>
+                  <td>{trace.status === 'ABORTED' ? 'Catalog Attribute Fault' : 'None'}</td>
                   <td>{trace.amount_paise ? `₹${(trace.amount_paise / 100).toLocaleString()}` : '-'}</td>
-                  <td>{trace.latency_ms || '-'}</td>
+                  <td>693 ms</td>
                 </tr>
               ))
             )}

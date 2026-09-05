@@ -8,12 +8,15 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+import app.models
 from app.analytics.router import router as analytics_router
 from app.api.routers import api_router
-from app.db import get_db
+from app.db import Base, engine, get_db
 from app.payments.router import router as payments_router
 
 from .config import settings
+
+Base.metadata.create_all(bind=engine)
 
 logger = logging.getLogger(__name__)
 
@@ -54,9 +57,15 @@ async def global_exception_handler(request: Request, exc: Exception):
     # Log exception safely here (don't leak stack trace to client)
     req_id = getattr(request.state, "request_id", "unknown")
     logger.exception("Unhandled exception request_id=%s", req_id)
+    origin = request.headers.get("origin", "")
+    headers = {}
+    if origin and (origin in settings.parsed_cors_origins or "*" in settings.parsed_cors_origins):
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
     return JSONResponse(
         status_code=500,
         content={"detail": "An internal server error occurred.", "request_id": req_id},
+        headers=headers,
     )
 
 

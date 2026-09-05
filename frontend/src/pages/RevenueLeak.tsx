@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 
+const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1`;
+
 const RevenueLeak: React.FC = () => {
   const [failures, setFailures] = useState<any[]>([]);
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/v1/failures')
+    fetch(`${API_BASE}/failures`)
       .then(r => r.json())
       .then(data => setFailures(data.items || []))
       .catch(console.error);

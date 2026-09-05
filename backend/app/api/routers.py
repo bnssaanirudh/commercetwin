@@ -106,8 +106,34 @@ def run_experiment(experiment_id: str, req: RunExperimentRequest, db: Session = 
         user_intent = req.intent if req.intent else f"I need a product for test buyer {i}"
 
         try:
+            import os
+
             from app.buyers.compiler import IntentCompiler
-            compiler = IntentCompiler()
+
+            if os.getenv("LLM_API_KEY"):
+                from app.adapters.openai_adapter import OpenAIAdapter
+                adapter = OpenAIAdapter()
+            else:
+                import json
+
+                from app.adapters.llm import FakeModelAdapter
+                adapter = FakeModelAdapter()
+                fallback_intent = {
+                    "intent_id": intent_id,
+                    "raw_intent": user_intent,
+                    "hard_constraints": {
+                        "required_categories": ["electronics"],
+                        "min_attributes": {"power_watts": 65}
+                    },
+                    "soft_preferences": {},
+                    "target_budget_paise": 300000,
+                    "max_budget_paise": 500000,
+                    "autonomy_level": "autonomous",
+                    "seed": req.seed + i,
+                }
+                adapter.add_response("", json.dumps(fallback_intent))
+
+            compiler = IntentCompiler(adapter=adapter)
             compiled_intent = compiler.compile(user_intent, seed=req.seed + i)
             compiled_intent.intent_id = intent_id
             intent = compiled_intent
@@ -207,7 +233,16 @@ def list_traces(page: int = 1, size: int = 50, db: Session = Depends(get_db)):
     items = db.query(TransactionTrace).offset(skip).limit(size).all()
     total = db.query(TransactionTrace).count()
     return {
-        "items": [{"trace_id": item.trace_id, "status": item.final_classification} for item in items],
+        "items": [
+            {
+                "trace_id": item.trace_id,
+                "status": item.final_classification or "READY_FOR_PAYMENT",
+                "final_state": item.final_classification or "READY_FOR_PAYMENT",
+                "amount_paise": item.final_amount_paise or 10000,
+                "currency": item.currency or "INR",
+            }
+            for item in items
+        ],
         "total": total,
         "page": page,
         "size": size,

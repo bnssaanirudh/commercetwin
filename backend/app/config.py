@@ -32,7 +32,9 @@ class Settings(BaseSettings):
     chaos_seed: int = Field(default=42)
 
     # CORS configuration
-    cors_origins: str = Field(default="http://localhost:5173")
+    cors_origins: str = Field(
+        default="http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000"
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",
