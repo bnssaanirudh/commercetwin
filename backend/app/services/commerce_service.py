@@ -298,7 +298,7 @@ class CommerceService:
         synthesizing a non-empty patch.
         """
         from app.analytics.repair import RepairSynthesizer
-        from app.models import Product, ProductAttribute, ReplaySnapshot
+        from app.models import ReplaySnapshot
 
         if localized_cause is None:
             localized_cause = self.localize_failure(trace_id)
@@ -343,13 +343,13 @@ class CommerceService:
 
             if hypothesis == "missing_typed_attribute":
                 from app.models import CatalogAttributeEvidence
-                # We need to find exactly what attribute was missing. The reason_code 
+                # We need to find exactly what attribute was missing. The reason_code
                 # might not tell us which key. But we know the generator will just look
                 # at all evidence for this SKU and create a patch.
                 evidences = self.db.query(CatalogAttributeEvidence).filter(
                     CatalogAttributeEvidence.sku == sku
                 ).all()
-                
+
                 for ev in evidences:
                     attributes_evidence.append({
                         "key": ev.key,
@@ -490,7 +490,8 @@ class CommerceService:
             seed=snap.seed,
         )
 
-        agent = SemanticBuyer(intent_schema, sandbox_products, sandbox_attrs_map)
+        from app.buyers.configurations import StructuredBuyer
+        agent = StructuredBuyer(intent_schema, sandbox_products, sandbox_attrs_map)
 
         replay_runner = self.run_trace(
             agent=agent,

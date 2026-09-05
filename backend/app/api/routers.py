@@ -105,7 +105,7 @@ def run_experiment(experiment_id: str, req: RunExperimentRequest, db: Session = 
     for i in range(req.cohort_size):
         intent_id = f"synthetic-{experiment_id}-{i}"
         user_intent = req.intent if req.intent else f"I need a product for test buyer {i}"
-        
+
         try:
             from app.buyers.compiler import IntentCompiler
             compiler = IntentCompiler()
@@ -113,26 +113,18 @@ def run_experiment(experiment_id: str, req: RunExperimentRequest, db: Session = 
             compiled_intent.intent_id = intent_id
             intent = compiled_intent
         except Exception as e:
-            # Fallback for when LLM is unavailable
-            intent = BuyerIntentSchema(
-                intent_id=intent_id,
-                raw_intent=user_intent,
-                hard_constraints=HardConstraints(required_categories=["electronics"], min_attributes={"power_watts": 65}),
-                soft_preferences=SoftPreferences(),
-                target_budget_paise=50000,
-                max_budget_paise=50000,
-                autonomy_level="autonomous",
-                seed=req.seed + i,
-            )
+            # Raise 503 instead of rewriting intent
+            raise HTTPException(status_code=503, detail=f"LLM compiler unavailable: {e!s}") from e
         p = Product(sku=f"SYNTH-{experiment_id}-{i}", merchant_id="merchant_demo", title=f"Synthetic Charger {i}", category="electronics", description=user_intent)
         p.price_paise = 10000
         db.add(p)
-        
-        from app.models import CatalogAttributeEvidence
-        import uuid
+
         import datetime
         import hashlib
-        
+        import uuid
+
+        from app.models import CatalogAttributeEvidence
+
         db.add(CatalogAttributeEvidence(
             evidence_id=f"EV-{uuid.uuid4().hex[:8]}",
             sku=p.sku,
@@ -145,21 +137,21 @@ def run_experiment(experiment_id: str, req: RunExperimentRequest, db: Session = 
             source_hash=hashlib.sha256(f"{p.sku}:power_watts:65".encode()).hexdigest()
         ))
         db.flush()
-        
+
         from app.models import ProductAttribute
         attr = ProductAttribute(sku=p.sku, key="power_watts", value="65", type="int")
         db.add(attr)
         attrs_map = {p.sku: [attr]}
-        
+
         from app.chaos.engine import ChaosEngine
         chaos_engine = ChaosEngine()
         inv_db = {p.sku: 10}
         price_db = {p.sku: 10000}
         policy_db = {"shipping_available": True, "flat_shipping_paise": 0}
-        
+
         chaos_engine.apply([p], inv_db, price_db, policy_db, req.seed + i, exp.chaos_profile, attrs_map)
         mutated_products, mutated_inventory, mutated_pricing, mutated_policy, mutated_attrs_map = chaos_engine.get_state()
-        
+
         agent = SemanticBuyer(intent, mutated_products, mutated_attrs_map)
         try:
             runner = svc.run_trace(
@@ -171,7 +163,7 @@ def run_experiment(experiment_id: str, req: RunExperimentRequest, db: Session = 
                 experiment_id=experiment_id,
                 attributes_map=mutated_attrs_map,
             )
-            
+
             # If the trace fails and chaos was applied, we might want to automatically localize and repair
             # to populate the Repairs page, similar to run_benchmark
             final_state = runner.state_machine.current_state.name
@@ -179,7 +171,7 @@ def run_experiment(experiment_id: str, req: RunExperimentRequest, db: Session = 
                 localized = svc.localize_failure(runner.trace_id)
                 if localized.get("status") == "localized":
                     svc.generate_repair(trace_id=runner.trace_id, localized_cause=localized)
-            
+
             results.append({
                 "buyer_id": intent_id,
                 "final_state": final_state,

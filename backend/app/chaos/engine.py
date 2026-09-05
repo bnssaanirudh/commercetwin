@@ -30,7 +30,7 @@ class ChaosEngine:
         self.cloned_policy: dict[str, Any] = {}
 
     def _clone_state(self, products: list[Product], inventory: dict[str, int],
-                     pricing: dict[str, int], policy: dict[str, Any], attributes_map: dict[str, list[Any]] = None):
+                     pricing: dict[str, int], policy: dict[str, Any], attributes_map: dict[str, list[Any]] | None = None):
         # Deep copy to ensure safety
         self.cloned_products = copy.deepcopy(products)
         self.cloned_inventory = copy.deepcopy(inventory)
@@ -39,7 +39,7 @@ class ChaosEngine:
         self.cloned_attributes = copy.deepcopy(attributes_map) if attributes_map is not None else {}
 
     def apply(self, products: list[Product], inventory: dict[str, int],
-              pricing: dict[str, int], policy: dict[str, Any], seed: int, profile: str, attributes_map: dict[str, list[Any]] = None):
+              pricing: dict[str, int], policy: dict[str, Any], seed: int, profile: str, attributes_map: dict[str, list[Any]] | None = None):
         """Applies chaos mutations deterministically to a cloned state."""
         self._clone_state(products, inventory, pricing, policy, attributes_map)
         self.injections = []
@@ -67,7 +67,7 @@ class ChaosEngine:
                     dropped = []
                     kept = []
                     for attr in attrs:
-                        if attr.key == "power_watts":
+                        if attr.key == "wattage":
                             dropped.append(attr)
                         else:
                             kept.append(attr)
@@ -76,7 +76,7 @@ class ChaosEngine:
                         self.injections.append(ChaosInjection(
                             chaos_id=f"CHAOS-{uuid.uuid4().hex[:8]}",
                             family="catalog",
-                            target=f"{p.sku}_power_watts",
+                            target=f"{p.sku}_wattage",
                             severity="high",
                             seed=seed,
                             before_state="present",

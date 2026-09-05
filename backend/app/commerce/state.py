@@ -46,10 +46,11 @@ class CommerceStateMachine:
         CommerceState.ABORTED: [],
     }
 
-    def __init__(self) -> None:
+    def __init__(self, trace_id: str | None = None) -> None:
+        self.trace_id = trace_id
         self.current_state = CommerceState.INTENT_RECEIVED
         self.trace_events: list[dict[str, Any]] = []
-        self._record_trace("STATE_ENTERED", {"state": self.current_state.value})
+        self._record_trace("STATE_ENTERED", {"state": self.current_state.value, "trace_id": self.trace_id})
 
     def _record_trace(self, event_type: str, payload: dict) -> None:
         self.trace_events.append({

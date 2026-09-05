@@ -21,9 +21,12 @@ class CommerceRunner:
         merchant_policy_db: dict[str, Any],
         chaos_engine=None,
         payment_adapter=None,
+        trace_id: str | None = None,
     ) -> None:
+        import uuid
+        self.trace_id = trace_id or f"TR-{uuid.uuid4().hex[:8]}"
         self.agent = agent
-        self.state_machine = CommerceStateMachine()
+        self.state_machine = CommerceStateMachine(self.trace_id)
 
         # In-process DB snapshots for deterministic precheck
         self.inventory_db = inventory_db
@@ -128,8 +131,12 @@ class CommerceRunner:
         self._transition_and_trigger(CommerceState.RECONCILIATION_REQUIRED)
 
         try:
+            if self.payment_adapter is None or not hasattr(self.payment_adapter, "service"):
+                self.state_machine.transition_to(CommerceState.ABORTED, {"reason": "NO_PAYMENT_ADAPTER"})
+                return
+
             orders = self.payment_adapter.service.fetch_orders_by_receipt(self.receipt_id)
-            
+
             valid_orders = []
             for o in orders:
                 if (
@@ -138,7 +145,7 @@ class CommerceRunner:
                     and o.get("status") in ("created", "paid", "attempted")
                 ):
                     valid_orders.append(o)
-                    
+
             if valid_orders:
                 # Found a matching order — server processed it, link existing one.
                 self._transition_and_trigger(CommerceState.RECOVERED_SUCCESS, {"recovered_order_id": valid_orders[0]["id"]})

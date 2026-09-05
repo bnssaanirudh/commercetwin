@@ -196,7 +196,7 @@ def test_correct_repair_succeeds(db_session):
     trace = db_session.query(TransactionTrace).order_by(TransactionTrace.created_at.desc()).first()
     assert trace is not None
     original_state = trace.final_classification
-    
+
     assert original_state == "ABORTED", "Trace must initially abort because power_watts is missing"
 
     snap = db_session.query(ReplaySnapshot).filter(

@@ -1,0 +1,7 @@
+{
+  "system": "commercetwin",
+  "split": "held_out",
+  "seed": 42,
+  "merchant_version": 1,
+  "chaos_profile": "all"
+}

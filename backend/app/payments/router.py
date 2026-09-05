@@ -141,7 +141,7 @@ async def verify_payment(req: PaymentVerifyRequest, db: Session = Depends(get_db
 
     from app.models import PaymentOperation
     from app.payments.webhook_handler import STATE_HIERARCHY
-    
+
     op = db.query(PaymentOperation).filter(PaymentOperation.razorpay_order_id == req.razorpay_order_id).first()
     if op:
         current_level = STATE_HIERARCHY.get(op.state, 0)
